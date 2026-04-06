@@ -1,0 +1,6 @@
+{
+  "name": "deep-research",
+  "version": "0.1.0",
+  "description": "In-depth research with evidence gathering, structured reports, and inline citations",
+  "skills": "./skills/"
+}
