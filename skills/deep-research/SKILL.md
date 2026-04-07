@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Use when the user asks for in-depth research on a topic requiring multiple sources, evidence gathering, and a structured report with citations
+description: Use when the user asks for in-depth research on a topic that requires investigation across multiple angles — not a quick lookup or single-source answer
 argument-hint: "<research topic>"
 ---
 
