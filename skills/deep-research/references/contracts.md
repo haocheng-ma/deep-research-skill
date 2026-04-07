@@ -52,6 +52,45 @@ All dispatches include `research_question` as anchoring context in the task assi
 ```
 When issues found, `status` is `"needs_revision"` and `issues` contains specific problems.
 
+## Synthesizer return contract
+```json
+{
+  "intro_written": true,
+  "conclusion_written": true,
+  "status": "pass",
+  "issues": [],
+  "summary": "Wrote introduction and conclusion. No cross-chapter issues found."
+}
+```
+
+When issues are found, `status` is `"issues_found"` and `issues` contains specific problems:
+
+```json
+{
+  "intro_written": true,
+  "conclusion_written": true,
+  "status": "issues_found",
+  "issues": [
+    {
+      "type": "contradiction",
+      "chapters_affected": ["chapter-2.md", "chapter-4.md"],
+      "description": "Chapter 2 characterizes adoption as slow; Chapter 4 describes rapid growth since 2020.",
+      "suggested_fix": "Qualify the time period in Chapter 2 — pre-2020 vs. post-2020 distinction."
+    }
+  ],
+  "summary": "Wrote introduction and conclusion. Found 1 contradiction across chapters 2 and 4."
+}
+```
+
+Issue types and `chapters_affected` semantics:
+
+| Type | `chapters_affected` |
+|------|---------------------|
+| `contradiction` | The two or more chapters in conflict |
+| `gap` | Empty list — no chapter covers the missing topic |
+| `alignment` | Empty list — whole-document concern, not localized |
+| `forward_ref` | The chapter containing the dangling reference |
+
 ## Blocked return contract (all subagents)
 
 Any subagent may return a blocked status instead of its normal contract:
