@@ -28,7 +28,7 @@ The skill uses a director/subagent architecture:
 3. **Gatherer** searches the web, fetches pages, and stores sources
 4. **Drafter** writes report chapters using the CECI analytical pattern
 5. **Editor** enriches prose with specific data and adds inline citations
-6. **Validator** checks the final report for quality (length, citations, structure)
+6. **Synthesizer** reads all chapters; writes Introduction and Conclusion; checks for cross-chapter contradictions, coverage gaps, research-question alignment, and dangling forward references
 
 The research loop (evaluate → gather → evaluate) runs until evidence is sufficient or the iteration cap (15) is reached. Writing parallelizes up to 3 chapters at once.
 

@@ -109,7 +109,7 @@ When issues are found, use `"status": "issues_found"` and populate `issues`:
   "issues": [
     {
       "type": "contradiction",
-      "chapters_affected": ["chapter-2.md", "chapter-4.md"],
+      "chapters_affected": ["{outputs}/chapter-2.md", "{outputs}/chapter-4.md"],
       "description": "Chapter 2 characterizes adoption as slow; Chapter 4 describes rapid growth since 2020.",
       "suggested_fix": "Qualify the time period in Chapter 2 — pre-2020 vs. post-2020 distinction."
     }
