@@ -378,18 +378,51 @@ For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
       Bash(command="mv {outputs}/report.md.tmp {outputs}/report.md")
       ```
 
-### 4.6 Dispatching `validate` tasks
+### 4.6 Dispatching `synthesize` tasks
 
-Run the validation script directly (not via Agent):
+**Construct the dispatch:**
+
+1. Read `${CLAUDE_SKILL_DIR}/synthesizer.md`
+2. Replace `{workspace}` and `{outputs}` placeholders with actual paths
+3. Read `workflow_state.json` and extract `known_unfillable_gaps` — the list of section names that persisted 2+ consecutive iterations with 0 new sources (built during §4.1 convergence checks). If `workflow_state.json` is missing or malformed, use `"known_unfillable_gaps": []` and proceed.
+4. Dispatch:
+   ```
+   Agent(
+     prompt=<synthesizer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
+       "research_question": "<user's original query>",
+       "chapter_files": ["{outputs}/chapter-1.md", "{outputs}/chapter-2.md", ...],
+       "intro_path": "{outputs}/intro.md",
+       "conclusion_path": "{outputs}/conclusion.md",
+       "known_unfillable_gaps": ["Section Name 1", "Section Name 2"],
+       "iteration": <N>
+     }),
+     description="synthesize report"
+   )
+   ```
+
+**On return — verify file writes first:**
+
+Before reading `status`, verify that `{outputs}/intro.md` and `{outputs}/conclusion.md` exist:
+
 ```
-Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/validate_report.py {outputs}/report.md")
+Glob(pattern="intro.md", path="{outputs}")        -- must return a result
+Glob(pattern="conclusion.md", path="{outputs}")   -- must return a result
 ```
 
-If it returns FAIL:
-1. Read the specific issues reported
-2. Create targeted edit tasks for the failing sections, blocked by `validate`
-3. Create a new `validate` task blocked by those edit tasks
-4. Create a new `present` task blocked by the new `validate`
+Existence is sufficient — the synthesizer's WHEN_BLOCKED clause prohibits returning `intro_written: true` if the write failed. If either file is missing: mark the task `"failed"` with reason `"intro or conclusion file missing after synthesizer returned"`, create a fresh `synthesize` task (blocked by the failed one), and count it against the cap.
+
+**On return — handle `status` by issue type:**
+
+| Issue type | `chapters_affected` | Director action |
+|------------|---------------------|-----------------|
+| `contradiction` | Two or more chapters in conflict | Create re-edit tasks for each affected chapter with `issues_to_address` populated. Create new `synthesize` task blocked by those edits. |
+| `forward_ref` | Chapter with the dangling reference | Create re-edit task for the affected chapter with `issues_to_address` populated. Create new `synthesize` task blocked by that edit. |
+| `gap` | Empty list | Accept without re-dispatch. No chapter covers the topic and no gather phase remains. Log in `workflow_state.json`. |
+| `alignment` | Empty list | Accept without re-dispatch. Whole-document concern with no locatable chapter target. Log in `workflow_state.json`. |
+
+If all issues are `gap` or `alignment` (none are actionable), treat the return as `"pass"` and proceed to assembly.
+
+**Cap:** max 2 `synthesize` rounds. After 2 rounds, store the final synthesize return in `workflow_state.json` under the task's `result` field (per the general §2 workflow), then accept and proceed to assembly. The director reads `result.issues` from that task's result at the `present` step to surface any unresolved `contradiction` or `forward_ref` issues (see §4.7).
 
 ### 4.7 Presenting the report
 
