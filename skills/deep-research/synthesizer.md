@@ -15,7 +15,7 @@ The director provides a task assignment containing:
 - `intro_path`: Path to write the Introduction (e.g., `{outputs}/intro.md`)
 - `conclusion_path`: Path to write the Conclusion (e.g., `{outputs}/conclusion.md`)
 - `known_unfillable_gaps`: Section names determined to be unfillable during research. Do NOT flag these in your issues, regardless of type.
-- `iteration`: Current synthesize pass (1-based)
+- `iteration`: Current synthesize pass (1-based). This is informational — the director uses it to track synthesis rounds. You do not adjust your behavior based on this value.
 </INPUT>
 
 <IRON_LAW>
@@ -23,10 +23,10 @@ DO NOT return `"pass"` unless every chapter file was read in full and the resear
 </IRON_LAW>
 
 <WORKFLOW>
-1. Read every chapter file listed in `chapter_files` in full — no skimming:
-   Read(file_path="<chapter_files[0]>")
-   Read(file_path="<chapter_files[1]>")
-   ... (all files listed in your TASK assignment)
+1. Read every chapter file listed in `chapter_files` in full — no skimming. Iterate through the complete list:
+   For each path in `chapter_files` (in order):
+     Read(file_path="<path>")
+   Do not stop after the first two entries — read every file in the list.
 
 2. Write the Introduction to `intro_path`:
    - Open with the research question and why it matters
@@ -54,7 +54,7 @@ DO NOT return `"pass"` unless every chapter file was read in full and the resear
 A contradiction is when two chapters make mutually inconsistent factual claims about the same subject. Minor differences in emphasis or framing are NOT contradictions.
 
 **Coverage gaps**
-Flag only gaps that are NOT in `known_unfillable_gaps`. A gap is a topic clearly in scope — it appears in the research question or the report structure — that no chapter addresses.
+Flag only gaps that are NOT in `known_unfillable_gaps`. A gap is a topic clearly in scope — it appears in the research question or is evident from the chapter content — that no chapter addresses.
 
 **Research question alignment**
 Read the `research_question` from your TASK assignment. Does the body provide a direct, substantiated answer? If the chapters cover related topics but never directly address the core question, that is an alignment issue.
@@ -77,8 +77,12 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 </HARD_RULES>
 
 <WHEN_BLOCKED>
-- A file listed in `chapter_files` is missing or unreadable: return BLOCKED with the missing path. Do not proceed with a partial chapter set.
-- Writing `intro_path` or `conclusion_path` fails: return BLOCKED with reason. Do not return `intro_written: true` if the write failed.
+- A file listed in `chapter_files` is missing or unreadable:
+  return {"status": "blocked", "reason": "chapter file missing: <path>"}
+  Do not proceed with a partial chapter set.
+- Writing `intro_path` or `conclusion_path` fails:
+  return {"status": "blocked", "reason": "write failed: <intro_path or conclusion_path>"}
+  Do not return `intro_written: true` if the write failed.
 </WHEN_BLOCKED>
 
 <CRASH_RESILIENCE>
@@ -118,6 +122,8 @@ Issue types:
 - `gap`: A topic in scope has no chapter coverage. `chapters_affected` is empty.
 - `alignment`: The body does not directly answer the research question. `chapters_affected` is empty.
 - `forward_ref`: A chapter contains a broken cross-reference. `chapters_affected` lists that chapter.
+
+`chapters_affected` values must be the exact path strings from `chapter_files` (e.g., `"{outputs}/chapter-2.md"`), not bare filenames.
 
 Do NOT wrap the JSON in markdown code fences. Return it as plain text.
 </OUTPUT_FORMAT>
