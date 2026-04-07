@@ -354,7 +354,7 @@ If it returns FAIL:
 
 ### 4.7 Presenting the report
 
-Read the completed report and output it directly to the user. Workflow complete.
+Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents. Workflow complete.
 
 ## 5. Subagent Dispatch Protocols
 
