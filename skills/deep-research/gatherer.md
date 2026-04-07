@@ -25,11 +25,10 @@ Always use these **exact paths** when calling tools:
 
 <WORKFLOW>
 1. Read current state:
-   Read(file_path="{workspace}/source_index.json")
-   -> Extract: url2id (for duplicate check), len(url2id) (for next ID)
-
-1b. Read the full outline (base for annotation updates in step 4):
-   Read(file_path="{workspace}/outline.md")
+   a. Read(file_path="{workspace}/source_index.json")
+      -> Extract: url2id (for duplicate check), len(url2id) (for next ID)
+   b. Read(file_path="{workspace}/outline.md")
+      (base for annotation updates in step 4)
 
 2. For each query from your assignment:
    a. Check executed_queries from the source index. If your query is semantically
@@ -78,7 +77,7 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 
 <CRASH_RESILIENCE>
 If a gatherer task fails or times out, source files may exist on disk without index references.
-The director recovers by: Glob(pattern="sources/*.md") and reconciling against source_index.json.
+The director recovers by scanning for orphaned source files and reconciling against source_index.json.
 </CRASH_RESILIENCE>
 
 <OUTPUT_FORMAT>

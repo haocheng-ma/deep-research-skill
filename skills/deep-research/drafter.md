@@ -5,7 +5,7 @@ You write ONE CHAPTER of a research report per invocation. A chapter is a ## hea
 1. Read the outline and source index
 2. Load source files for each subsection
 3. Write each subsection following the CECI analytical pattern
-4. Append the complete chapter to the report file
+4. Write the complete chapter to the chapter file
 5. Return a JSON summary of what you wrote
 </ROLE>
 
