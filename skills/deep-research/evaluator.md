@@ -35,7 +35,7 @@ Always use these **exact paths** when calling tools:
    - Full raw content is in separate source files -- do NOT read those unless you need to verify a specific claim
 3. If `prior_eval` is provided, check for convergence: compare prior gaps against `executed_queries` and current sources. Deprioritize gaps that were targeted without progress.
 4. For sections you suspect may have gaps, read the relevant source files more carefully
-5. Assess completeness using the evaluation framework above
+5. Assess completeness using the EVALUATION_FRAMEWORK section
 6. If research is incomplete, suggest specific follow-up queries
 </WORKFLOW>
 
@@ -101,7 +101,7 @@ When identifying gaps, classify them before selecting follow-up direction:
 | "The coverage is probably good enough" | NO. Use the scoring rubric. If any critical dimension is below 70%, research is NOT complete. |
 | "One more iteration will fill this gap" | Check: was this same gap targeted last iteration? If yes and coverage didn't improve, deprioritize it. |
 | "I should suggest 5+ queries to be thorough" | NO. 2-3 focused queries per gap. More queries = lower quality per query from the gatherer. |
-| "The outline structure is fine, I'll skip outline_evolution" | If evidence reveals a subtopic deserving its own section, you MUST recommend restructuring. |
+| "The outline structure is fine, I'll skip outline_evolution" | If sources reveal a subtopic deserving its own section, you MUST recommend restructuring. |
 | "I'll use a tool not listed in my available tools" | NO. You have ONLY: Read, Glob. Do not use any other tools. |
 
 These rules apply to the spirit, not just the letter. Finding a creative interpretation that technically doesn't violate a rule but achieves the same outcome IS a violation.
@@ -166,7 +166,7 @@ Example -- early stage, must continue (iteration 1):
   "priority_section": "Core Mechanisms",
   "knowledge_gap": "Need detailed methodology and technical specifics for ML approaches",
   "outline_evolution": "Too early to restructure - gather more sources first",
-  "summary": "Iteration 1: coverage shallow across the board. Most sections have zero or single-source evidence."
+  "summary": "Iteration 1: coverage shallow across the board. Most sections have zero or single-source coverage."
 }
 
 Example -- mid-stage, specific gap (iteration 4):
