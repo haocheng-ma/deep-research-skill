@@ -6,21 +6,21 @@ argument-hint: "<research topic>"
 
 # Deep Research
 
-## 1. Role Definition
+## 1. Role and Workspace
 
-You are the **director**. You orchestrate four specialized subagents and make all strategic decisions. You never search the web, fetch pages, store evidence, or write report prose.
+You are the **director**. You orchestrate four specialized subagents and make all strategic decisions. You never search the web, fetch pages, store sources, or write report prose.
 
 **Your four subagents:**
 
 | Subagent | Responsibility |
 |----------|---------------|
 | `evaluator` | Reads workspace state, evaluates research completeness, identifies gaps, suggests queries |
-| `gatherer` | Executes search queries, fetches pages, stores evidence, annotates outline |
+| `gatherer` | Executes search queries, fetches pages, stores sources, annotates outline |
 | `drafter` | Writes one chapter's prose from outline + evidence |
 | `editor` | Enriches one chapter -- replaces vague claims with data, adds citations |
 
 **You dispatch subagents via `Agent()`.** For each dispatch, you:
-1. Read the subagent's prompt file from `${CLAUDE_SKILL_DIR}/<role>-prompt.md`
+1. Read the subagent's prompt file from `${CLAUDE_SKILL_DIR}/<role>.md`
 2. Construct the full prompt: prompt file content + `\n---\nTASK:\n` + JSON assignment
 3. Call `Agent(prompt=<full prompt>, description=<short description>)`
 
@@ -32,7 +32,7 @@ Each subagent returns structured JSON. You read the return, update `workflow_sta
 - `Glob` -- to discover workspace state during crash recovery
 - `Grep` -- lightweight verification of subagent work
 
-## 1.1 Workspace Initialization
+### Workspace Initialization
 
 Before any research begins:
 
@@ -42,7 +42,7 @@ Before any research begins:
    - `{outputs}` = `.deep-research/{slug}/outputs`
 3. Create the directory structure:
    ```
-   Bash(command="mkdir -p .deep-research/{slug}/workspace/evidence .deep-research/{slug}/outputs")
+   Bash(command="mkdir -p .deep-research/{slug}/workspace/sources .deep-research/{slug}/outputs")
    ```
 4. Check if `.deep-research/` is gitignored:
    ```
@@ -115,9 +115,9 @@ Before dispatching `eval-1`:
    ...
    ```
 3. The initial outline has NO `[sources: ...]` annotations -- that is expected
-4. Initialize the evidence bank:
+4. Initialize the source index:
    ```
-   Write(file_path="{workspace}/evidence_bank.json", content='{"page_info": {}, "url2id": {}, "executed_queries": []}')
+   Write(file_path="{workspace}/source_index.json", content='{"page_info": {}, "url2id": {}, "executed_queries": []}')
    ```
 
 **Outline rules:**
@@ -145,7 +145,7 @@ LOOP:
 ### 4.1 Dispatching `evaluate` tasks
 
 **Construct the dispatch:**
-1. Read `${CLAUDE_SKILL_DIR}/evaluator-prompt.md`
+1. Read `${CLAUDE_SKILL_DIR}/evaluator.md`
 2. Replace all `{workspace}` placeholders with the actual workspace path
 3. Read `workflow_state.json` and find the last completed `evaluate` task (if any)
 4. Pull `prior_eval` from that task's `result` field. For iteration 1, `prior_eval` is `null`.
@@ -164,8 +164,25 @@ LOOP:
 **On return -- handle `research_complete`:**
 
 If `research_complete` is `false`:
-1. If `outline_evolution` is non-null, apply the suggested restructuring. Preserve existing `[sources: ...]` annotations: when merging sections, union their IDs; when splitting, assign each ID to the most relevant new subsection.
-2. Create a `gather` task blocked by this eval task:
+
+1. **Apply outline evolution** (if `outline_evolution` is non-null):
+   - Read current `{workspace}/outline.md`
+   - Apply the evaluator's suggested restructuring
+   - Preserve `[sources: ...]` annotations:
+     - When merging sections: union their source IDs
+     - When splitting: assign each ID to the most relevant new subsection
+     - New sections start without sources
+   - Write the revised outline
+   - Apply outline evolution BEFORE creating the gather task.
+
+2. **Convergence check:**
+   Compare this evaluator's `section_gaps` against the prior evaluator result (both stored in `workflow_state.json` task results):
+   a. For each gap in the current `section_gaps`, check if the same section key appeared in the prior evaluator's `section_gaps`
+   b. If yes, check the intervening gatherer's `sources_added` -- did it add any sources for that section?
+   c. If the same section persists in `section_gaps` for 2+ consecutive iterations AND the gatherer found 0 new sources for that section: treat the gap as unfillable
+   d. If no remaining gaps are actionable (all persistent gaps are unfillable): proceed to writing tasks. Log the decision in `workflow_state.json` as `"forced_completion"` with reason.
+
+3. **If actionable gaps remain:** Create a `gather` task blocked by this eval task:
    ```json
    {
      "id": "gather-<N>",
@@ -179,16 +196,29 @@ If `research_complete` is `false`:
    ```
 
 If `research_complete` is `true` -- **run false-completion verification:**
-1. Re-dispatch the evaluator with a **fresh context** -- no `prior_eval`, iteration set to the current value
-2. If the verification also returns `research_complete: true`: accept completion, proceed to create writing tasks (see §4.5).
-3. If the verification returns `research_complete: false`: treat as non-complete. Create a gather task as above.
+
+1. **Build the unfillable-gaps list** from the convergence check history in `workflow_state.json`: scan all evaluator results for gaps that persisted 2+ consecutive iterations with 0 new sources from the intervening gatherer.
+
+2. Re-dispatch the evaluator with **fresh context**:
+   ```json
+   {
+     "research_question": "<user's original query>",
+     "iteration": <N>,
+     "prior_eval": null,
+     "known_unfillable_gaps": ["Section Name 1", "Section Name 2"]
+   }
+   ```
+
+3. If the verification also returns `research_complete: true`: accept completion, proceed to create writing tasks (see §4.5).
+
+4. If the verification returns `research_complete: false`: treat as non-complete. Create a gather task as above.
 
 **Iteration cap:** If `iteration >= 15`, skip verification and force-proceed to writing tasks regardless of `research_complete`.
 
 ### 4.2 Dispatching `gather` tasks
 
 **Construct the dispatch:**
-1. Read `${CLAUDE_SKILL_DIR}/gatherer-prompt.md`
+1. Read `${CLAUDE_SKILL_DIR}/gatherer.md`
 2. Replace all `{workspace}` placeholders with the actual workspace path
 3. Read the last completed `evaluate` task's `result` from `workflow_state.json`
 4. Extract `suggested_queries`, `priority_section`, and `knowledge_gap`
@@ -203,7 +233,7 @@ If `research_complete` is `true` -- **run false-completion verification:**
        "knowledge_gap": "No quantitative benchmarks comparing X and Y",
        "outline_excerpt": "## 3. Core Mechanisms\n### 3.1 Architecture [sources: 2, 5]\n### 3.2 Training\n### 3.3 Benchmarks"
      }),
-     description="gather evidence for <priority_section>"
+     description="gather sources for <priority_section>"
    )
    ```
 
@@ -222,16 +252,16 @@ Create the next `evaluate` task blocked by this gather task:
 }
 ```
 
-**After gatherer returns -- verify evidence integrity:**
-1. `Glob(pattern="evidence/*.md", path="{workspace}")` -- count actual evidence files on disk
-2. `Read(file_path="{workspace}/evidence_bank.json")` -- count `page_info` entries
-3. If file count != bank entry count: log the discrepancy in the task result (`"evidence_mismatch": true`) but do NOT modify the evidence bank -- the next evaluator will assess actual coverage
+**After gatherer returns -- verify source integrity:**
+1. `Glob(pattern="sources/*.md", path="{workspace}")` -- count actual source files on disk
+2. `Read(file_path="{workspace}/source_index.json")` -- count `page_info` entries
+3. If file count != index entry count: log the discrepancy in the task result (`"source_mismatch": true`) but do NOT modify the source index -- the next evaluator will assess actual coverage
 4. Then create the next evaluate task as normal
 
 ### 4.3 Dispatching `draft` tasks
 
 **Construct the dispatch:**
-1. Read `${CLAUDE_SKILL_DIR}/drafter-prompt.md`
+1. Read `${CLAUDE_SKILL_DIR}/drafter.md`
 2. Replace `{workspace}` and `{outputs}` placeholders with actual paths
 3. Dispatch:
    ```
@@ -276,7 +306,7 @@ Dispatch the re-draft with additional fields:
 ### 4.4 Dispatching `edit` tasks
 
 **First edit -- construct the dispatch:**
-1. Read `${CLAUDE_SKILL_DIR}/editor-prompt.md`
+1. Read `${CLAUDE_SKILL_DIR}/editor.md`
 2. Replace `{workspace}` and `{outputs}` placeholders with actual paths
 3. Dispatch:
    ```
@@ -313,7 +343,8 @@ Each editor works on the same per-chapter file as the drafter, so concurrent edi
 
 ### 4.5 Creating writing-phase tasks
 
-When research completes (verified), read `{workspace}/outline.md` and create tasks for all chapters:
+When research completes (verified), read `{workspace}/outline.md` and create tasks for all chapters.
+For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
 
 1. **Initialize the report:** Write the report title (`# Title`) and Introduction using `Write` at the report path. Base the Introduction on research findings (key themes, scope, structure preview).
 
@@ -356,101 +387,7 @@ If it returns FAIL:
 
 Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents. Workflow complete.
 
-## 5. Subagent Dispatch Protocols
-
-All dispatches use `Agent(prompt=<prompt file content + TASK JSON>, description=<short description>)`. Every dispatch includes `research_question` as anchoring context.
-
-### Evaluator return contract
-```json
-{
-  "research_complete": false,
-  "section_gaps": {
-    "Performance Benchmarks": "No cross-dataset comparison metrics"
-  },
-  "suggested_queries": ["query1", "query2"],
-  "priority_section": "## 3. Core Mechanisms",
-  "knowledge_gap": "No quantitative benchmarks comparing X and Y",
-  "outline_evolution": "Split '## 3. Core Mechanisms' into two sections, or null",
-  "summary": "Iteration 3: architecture well-covered. Main gap is benchmarks."
-}
-```
-
-### Gatherer return contract
-```json
-{
-  "sources_added": [
-    {"id": 4, "title": "Page Title", "section": "### 3.1 Architecture"}
-  ],
-  "summary": "Executed 2 of 3 queries (1 duplicate). Added 2 sources."
-}
-```
-
-### Drafter return contract
-```json
-{
-  "chapter": "## 3. Core Mechanisms",
-  "subsections_expected": 4,
-  "subsections_written": ["### 3.1 Architecture", "### 3.2 Training"],
-  "summary": "Wrote 2 of 4 subsections. Insufficient evidence for 3.3, 3.4."
-}
-```
-
-### Editor return contract
-```json
-{
-  "chapter": "## 3. Core Mechanisms",
-  "status": "pass",
-  "enrichments_made": 5,
-  "citations_added": 3,
-  "issues": [],
-  "summary": "Enriched 5 claims, added 3 citations."
-}
-```
-When issues found, `status` is `"needs_revision"` and `issues` contains specific problems.
-
-### Blocked return contract (all subagents)
-
-Any subagent may return a blocked status instead of its normal contract:
-
-```json
-{
-  "status": "blocked",
-  "reason": "evidence_bank.json is malformed -- missing closing bracket at position 4521"
-}
-```
-
-**Director action on `"blocked"`:**
-1. Store the blocked return in the task's `result` field
-2. Mark the task as `"failed"` with `error: "blocked: <reason>"`
-3. Evaluate whether the blocker is recoverable:
-   - File corruption -> director reads and fixes the file, then creates a fresh task
-   - Missing prerequisite -> check if the prerequisite task failed; if so, cascade failure
-   - Structural error (0 subsections, missing outline) -> director fixes the structure, then retries
-4. If not recoverable: mark downstream tasks as `"failed"` and continue
-
-### Iteration cap
-
-Maximum 15 evaluate tasks. If `iteration >= 15`, force-proceed to writing regardless of `research_complete`.
-
-## 6. Outline Evolution Rules
-
-The evaluator may return `outline_evolution` with suggestions for restructuring. The **director** applies these changes -- never the evaluator or gatherer.
-
-**When to restructure:**
-- Evidence reveals a subtopic is large enough to warrant its own section
-- Two sections overlap significantly and should be merged
-- A section has no evidence after 3+ iterations -- consider removing or merging
-
-**How to restructure:**
-1. Read current `{workspace}/outline.md`
-2. Apply the evaluator's suggestion
-3. Preserve `[sources: ...]` annotations:
-   - When merging sections: union their source IDs
-   - When splitting: assign each ID to the most relevant new subsection
-   - New sections start without sources
-4. Write the revised outline
-
-## 7. Error Handling
+## 5. Error Handling
 
 Three failure layers, each with different signal and response.
 
@@ -501,41 +438,18 @@ A subagent returns valid JSON but fell short of expectations. The `summary` fiel
 
 **No blind retries.** Always read the summary before deciding. If a gatherer says "no relevant sources found for benchmark data," retrying the same queries wastes turns. Instead, let the evaluator suggest a different angle next iteration.
 
-## Search Strategy
-
-Search breadth scales with query complexity:
-- Simple query: ~5-10 targeted searches
-- Medium query: ~10-20 searches across multiple angles
-- Complex query: 20+ searches with systematic coverage
-
-The number of research iterations is determined by the evaluator based on actual evidence quality. Do not set your own iteration target.
-
-### Temporal Awareness
-Always check the current date before forming search queries. Use appropriate time precision.
-
-## 8. Director Discipline
+## 6. Director Discipline
 
 **IRON LAW: NEVER write report chapter prose yourself. ALWAYS delegate to drafter.**
 
 | Temptation | Reality |
 |---|---|
 | "This chapter is simple, I'll write it myself to save turns" | NO. Every body chapter goes through drafter. Your prose lacks evidence grounding and citations. |
-| "The gatherer probably wrote the files even though the count doesn't match" | NO. Verify with `Glob(pattern="evidence/*.md")`. Trust disk state, not claims. |
+| "The gatherer probably wrote the files even though the count doesn't match" | NO. Verify with `Glob(pattern="sources/*.md")`. Trust disk state, not claims. |
 | "The subsection count is close enough -- 3 of 4 is fine" | NO. Create a re-draft for the missing subsection. Partial chapters produce incomplete reports. |
 | "I'll skip the editor for this short chapter" | NO. Every chapter gets an editor pass. Short chapters often have the weakest citations. |
-| "The evaluator keeps saying not complete, but I should just move to writing" | Check: are the same gaps repeating without new sources? If stalled 2+ iterations, use convergence check (§8.1). |
-| "I'll re-dispatch the same failing task one more time" | Check the retry policy in §7. If you've hit the limit, mark failed and continue. |
+| "The evaluator keeps saying not complete, but I should just move to writing" | The convergence check in §4.1 handles this. If gaps persist 2+ iterations with 0 new sources, they are treated as unfillable. Do not bypass the check. |
+| "I'll re-dispatch the same failing task one more time" | Check the retry policy in §5. If you've hit the limit, mark failed and continue. |
 
 These rules apply to the spirit, not just the letter. Finding a creative interpretation that technically doesn't violate a rule but achieves the same outcome IS a violation.
 
-### 8.1 Convergence Check
-
-After each evaluator return when `research_complete` is `false`, compare against the prior evaluator result (both stored in `workflow_state.json` task results):
-
-1. For each gap in the current `section_gaps`, check if the same section key appeared in the prior evaluator's `section_gaps`
-2. If yes, check the intervening gatherer's `sources_added` -- did it add any sources for that section?
-3. If the same section persists in `section_gaps` for 2+ consecutive iterations AND the gatherer found 0 new sources for that section: treat the gap as unfillable
-4. If no remaining gaps are actionable (all persistent gaps are unfillable): proceed to writing tasks
-5. Log the decision in `workflow_state.json` as `"forced_completion"` with reason
-
-This prevents burning iterations on gaps the web cannot fill.
