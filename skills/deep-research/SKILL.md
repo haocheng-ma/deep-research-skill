@@ -347,29 +347,36 @@ Each editor works on the same per-chapter file as the drafter, so concurrent edi
 When research completes (verified), read `{workspace}/outline.md` and create tasks for all chapters.
 For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
 
-1. **Initialize the report:** Write the report title (`# Title`) and Introduction using `Write` at the report path. Base the Introduction on research findings (key themes, scope, structure preview).
+1. **Initialize the report:** Write the report title only using `Write`:
+   ```
+   Write(file_path="{outputs}/report.md", content="# <title>\n")
+   ```
+   The Introduction and Conclusion are written by the synthesizer after editing completes — do not write them here.
 
 2. **Create tasks for each `##` chapter** (skip Introduction and Conclusion):
    ```
-   draft-ch1  (blocked_by: [eval-N])     -- draft chapter 1
-   draft-ch2  (blocked_by: [eval-N])     -- draft chapter 2
-   draft-ch3  (blocked_by: [eval-N])     -- draft chapter 3
-   edit-ch1   (blocked_by: [draft-ch1])  -- edit chapter 1
-   edit-ch2   (blocked_by: [draft-ch2])  -- edit chapter 2
-   edit-ch3   (blocked_by: [draft-ch3])  -- edit chapter 3
-   validate   (blocked_by: [edit-ch1, edit-ch2, edit-ch3])
-   present    (blocked_by: [validate])
+   draft-ch1    (blocked_by: [eval-N])              -- draft chapter 1
+   draft-ch2    (blocked_by: [eval-N])              -- draft chapter 2
+   draft-ch3    (blocked_by: [eval-N])              -- draft chapter 3
+   edit-ch1     (blocked_by: [draft-ch1])           -- edit chapter 1
+   edit-ch2     (blocked_by: [draft-ch2])           -- edit chapter 2
+   edit-ch3     (blocked_by: [draft-ch3])           -- edit chapter 3
+   synthesize-1 (blocked_by: [edit-ch1, edit-ch2, edit-ch3])
+   present      (blocked_by: [synthesize-1])
    ```
 
    Draft tasks share the same blocker (`eval-N`), so all dispatch concurrently in a single message (batch 1). After all drafts complete, edit tasks become runnable and dispatch concurrently (batch 2). Each batch is one director turn.
 
    Each drafter writes to its own chapter file (`{outputs}/chapter-1.md`, `{outputs}/chapter-2.md`, etc.), and each editor works on the same per-chapter file. This eliminates file contention between parallel agents.
 
-3. **Assemble the report:** After all edit tasks complete, the director:
-   a. Read each chapter file in outline order
-   b. Concatenate: title + introduction + chapters in order + conclusion + sources
-   c. Write the assembled report: `Write(file_path="{outputs}/report.md", content=<full report>)`
-   The director writes the Conclusion (key takeaways) and Sources section as part of assembly.
+3. **Assemble the report:** After the final synthesize task returns `"pass"` (or the cap is reached):
+   a. Read `{outputs}/intro.md`, all chapter files in outline order, and `{outputs}/conclusion.md`
+   b. Concatenate in order: intro + chapters + conclusion
+   c. Write atomically — use a temp file then rename:
+      ```
+      Write(file_path="{outputs}/report.md.tmp", content=<assembled report>)
+      Bash(command="mv {outputs}/report.md.tmp {outputs}/report.md")
+      ```
 
 ### 4.6 Dispatching `validate` tasks
 
