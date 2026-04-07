@@ -426,7 +426,16 @@ If all issues are `gap` or `alignment` (none are actionable), treat the return a
 
 ### 4.7 Presenting the report
 
-Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents. Workflow complete.
+Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents.
+
+If the synthesize cap was reached and unresolved `contradiction` or `forward_ref` issues remain (stored in the final synthesize task's `result.issues` in `workflow_state.json`), include them in your message:
+
+> Note: the following issues were detected during synthesis but could not be resolved within the synthesis cap:
+> - [description of each unresolved contradiction/forward_ref from the issues array]
+
+`gap` and `alignment` issues are accepted limitations — do not surface them to the user.
+
+Workflow complete.
 
 ## 5. Error Handling
 
@@ -475,7 +484,7 @@ A subagent returns valid JSON but fell short of expectations. The `summary` fiel
 | Drafter wrote partial chapter | `subsections_expected != len(subsections_written)` | Create targeted re-draft with `subsections_to_write`. |
 | Editor found issues | `status: "needs_revision"`, `issues` array populated | Create re-edit or re-draft task with `issues_to_address`. Max 2 re-edit rounds. |
 | Evaluator returns `research_complete: true` too early | Few sources, large section_gaps | False-completion verification catches this (§4.1). |
-| Validate fails | Bash returns non-zero exit code with specific issues | Create targeted edit tasks for failing sections (§4.6). |
+| Synthesize BLOCKED | Synthesizer returned BLOCKED with reason | Create a fresh `synthesize` task (blocked by the failed one). Count against the cap. If the cap is reached, proceed to assembly and include the BLOCKED reason in the `present` step output. |
 
 **No blind retries.** Always read the summary before deciding. If a gatherer says "no relevant sources found for benchmark data," retrying the same queries wastes turns. Instead, let the evaluator suggest a different angle next iteration.
 
