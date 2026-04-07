@@ -53,11 +53,10 @@ The `.deep-research/` directory is automatically gitignored.
 ## Requirements
 
 - Claude Code with Agent, WebSearch, and WebFetch tools available
-- Python 3 (for the validation script — stdlib only, no dependencies)
 
 ## Roadmap
 
-- [ ] **Assembler subagent** — Introduction and Conclusion are currently written by the director without evidence grounding or editorial review. A dedicated assembler subagent would ensure these sections receive the same quality treatment as body chapters.
+- [x] **Synthesizer subagent** — Introduction and Conclusion are now written by the synthesizer subagent after all chapter editing completes, with full evidence context. The synthesizer also checks for cross-chapter contradictions, coverage gaps, research-question alignment, and dangling forward references.
 - [ ] **Behavioral testing** — Validate director orchestration and subagent compliance under pressure scenarios (e.g., false completion, partial drafts, convergence stalls).
 - [ ] **Multilingual reports** — Reports are currently English-only. Add language selection so the research output matches the user's preferred language.
 - [ ] **Verify `argument-hint` field** — Confirm the plugin loader recognizes this frontmatter field, or remove it.
