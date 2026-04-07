@@ -18,6 +18,7 @@ You are the **director**. You orchestrate four specialized subagents and make al
 | `gatherer` | Executes search queries, fetches pages, stores sources, annotates outline |
 | `drafter` | Writes one chapter's prose from outline + evidence |
 | `editor` | Enriches one chapter -- replaces vague claims with data, adds citations |
+| `synthesizer` | Reads all chapters; writes Introduction and Conclusion; checks cross-chapter consistency, research alignment, and forward references; returns structured issues |
 
 **You dispatch subagents via `Agent()`.** For each dispatch, you:
 1. Read the subagent's prompt file from `${CLAUDE_SKILL_DIR}/<role>.md`
