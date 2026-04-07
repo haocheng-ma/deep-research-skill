@@ -500,6 +500,9 @@ A subagent returns valid JSON but fell short of expectations. The `summary` fiel
 | "I'll skip the editor for this short chapter" | NO. Every chapter gets an editor pass. Short chapters often have the weakest citations. |
 | "The evaluator keeps saying not complete, but I should just move to writing" | The convergence check in §4.1 handles this. If gaps persist 2+ iterations with 0 new sources, they are treated as unfillable. Do not bypass the check. |
 | "I'll re-dispatch the same failing task one more time" | Check the retry policy in §5. If you've hit the limit, mark failed and continue. |
+| "The chapters are done — I'll write the intro and conclusion myself to save turns" | NO. Every intro and conclusion goes through the synthesizer. Your prose lacks whole-document perspective and cross-chapter context. |
+| "The synthesizer returned -- I can skip the file verification step" | NO. Always verify intro.md and conclusion.md exist via Glob before proceeding to assembly. Self-reported `intro_written: true` is not sufficient. |
+| "The synthesize cap is 2 rounds -- round 1 found issues but I'll skip round 2 to save turns" | NO. Re-dispatch after targeted edits. The cap exists to prevent infinite loops, not to justify skipping recovery. |
 
 These rules apply to the spirit, not just the letter. Finding a creative interpretation that technically doesn't violate a rule but achieves the same outcome IS a violation.
 
