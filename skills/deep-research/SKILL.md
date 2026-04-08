@@ -86,11 +86,11 @@ Create `{workspace}/workflow_state.json`:
 
 1. Read `workflow_state.json` via `Read`
 2. Find next runnable task(s): all tasks where `status == "pending"` AND every task in `blocked_by` has `status == "completed"`
-3. Dispatch up to 3 runnable tasks via `Agent()` calls in a single message (parallel execution)
+3. Dispatch all runnable tasks via `Agent()` calls in a single message (parallel execution)
 4. After each subagent returns: update the task's `status` to `"completed"`, store the return JSON in `result`, set `completed_at`, and create any follow-up tasks
 5. Write updated state back via `Write`
 
-**Turn economy:** Minimize your own tool calls per loop iteration. Read `workflow_state.json` once, dispatch all runnable tasks (up to 3), process each return, then write state once. Do not read/write state between individual task dispatches.
+**Turn economy:** Minimize your own tool calls per loop iteration. Read `workflow_state.json` once, dispatch all runnable tasks, process each return, then write state once. Do not read/write state between individual task dispatches.
 
 ### Crash recovery
 
@@ -136,7 +136,7 @@ LOOP:
   runnable = all pending tasks where every blocked_by task is completed
   if no runnable tasks: DONE -- workflow complete
 
-  For each runnable task (up to 3):
+  For each runnable task:
     dispatch based on task.type (see below)
     update workflow_state.json after each dispatch returns
 
