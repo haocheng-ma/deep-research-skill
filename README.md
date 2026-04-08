@@ -58,8 +58,9 @@ The `.deep-research/` directory is automatically gitignored.
 
 - [x] **Synthesizer subagent** — Introduction and Conclusion are now written by the synthesizer subagent after all chapter editing completes, with full evidence context. The synthesizer also checks for cross-chapter contradictions, coverage gaps, research-question alignment, and dangling forward references.
 - [ ] **Behavioral testing** — Validate director orchestration and subagent compliance under pressure scenarios (e.g., false completion, partial drafts, convergence stalls).
-- [ ] **Multilingual reports** — Reports are currently English-only. Add language selection so the research output matches the user's preferred language.
+- [ ] **Multilingual reports** — Reports are currently English-only. Add language detection so the report output matches the user's query language. Initial implementation searches in English only; which language to search in — and whether to search in both languages — needs validation through testing and user feedback.
 - [ ] **Verify `argument-hint` field** — Confirm the plugin loader recognizes this frontmatter field, or remove it.
+- [ ] **Research clarification step** — Before starting research, the director could ask the user clarifying questions (e.g., scope, preferred angle, language when ambiguous). Currently the director proceeds directly from query to outline.
 
 ## License
 
