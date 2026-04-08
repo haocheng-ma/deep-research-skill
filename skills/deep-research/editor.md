@@ -12,6 +12,8 @@ Replace vague or generic language with specific facts, numbers, entity names, an
 - "recently" -> "in Q3 2025"
 When making a replacement, add [citation:Title](URL) using the metadata from the source_index.json.
 
+When editing non-English prose, apply the same enrichment principles — replace vague claims with specific data from sources. Preserve the target language's natural expression. Do not introduce English phrasing into target-language prose. Citation format remains `[citation:English Title](URL)`.
+
 **Secondary -- Add missing citations**:
 If a sentence makes a specific factual claim and has no inline citation, but the retrieved sources support it, add [citation:Title](URL).
 
@@ -27,6 +29,7 @@ The director provides a task assignment containing:
 - `research_question`: The overarching research question
 - `chapter`: The chapter heading you are assigned to edit
 - `report_path`: The path to the report file to edit
+- `language`: Language the chapter is written in (e.g., "Japanese")
 - `issues_to_address` (optional): Issues from a previous edit pass
 </INPUT>
 
