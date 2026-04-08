@@ -92,18 +92,18 @@ Return a JSON verdict as your final message:
 
 {
   "chapter": "## 2. Core Mechanisms",
-  "status": "pass",
+  "status": "done",
   "issues": [],
   "enrichments_made": 3,
   "citations_added": 2,
   "summary": "Enriched 3 claims, added 2 citations. No structural issues remain."
 }
 
-Use "status": "needs_revision" ONLY for structural problems requiring new content:
+Use "status": "needs_action" ONLY for structural problems requiring new content:
 
 {
   "chapter": "## 2. Core Mechanisms",
-  "status": "needs_revision",
+  "status": "needs_action",
   "issues": ["### 2.4 is missing entirely"],
   "enrichments_made": 1,
   "citations_added": 0,

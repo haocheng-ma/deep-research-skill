@@ -354,8 +354,8 @@ Each editor works on the same per-chapter file as the drafter, so concurrent edi
 ```
 
 **On return -- handle `status`:**
-- `"pass"`: chapter is done. No follow-up task needed.
-- `"needs_revision"`: read the `issues` array. Decide:
+- `"done"`: chapter is done. No follow-up task needed.
+- `"needs_action"`: read the `issues` array. Decide:
   - If issues are about missing content or missing subsections -> create a re-draft task (blocked by this edit), then a re-edit task (blocked by the re-draft).
   - If issues are about enrichment/citation quality -> create a re-edit task (blocked by this edit) with `issues_to_address` populated from the `issues` array.
   - Max 2 re-edit rounds per chapter. After 2 rounds, accept and move on.
@@ -387,7 +387,7 @@ For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
 
    Each drafter writes to its own chapter file (`{outputs}/chapter-1.md`, `{outputs}/chapter-2.md`, etc.), and each editor works on the same per-chapter file. This eliminates file contention between parallel agents.
 
-3. **Assemble the report:** After the final synthesize task returns `"pass"` (or the cap is reached):
+3. **Assemble the report:** After the final synthesize task returns `"done"` (or the cap is reached):
    a. Read `{outputs}/intro.md`, all chapter files in outline order, and `{outputs}/conclusion.md`
    b. Concatenate in order: intro + chapters + conclusion
    c. Write atomically — use a temp file then rename:
@@ -438,7 +438,7 @@ Existence is sufficient — the synthesizer's WHEN_BLOCKED clause prohibits retu
 | `gap` | Empty list | Accept without re-dispatch. No chapter covers the topic and no gather phase remains. Log in `workflow_state.json`. |
 | `alignment` | Empty list | Accept without re-dispatch. Whole-document concern with no locatable chapter target. Log in `workflow_state.json`. |
 
-If all issues are `gap` or `alignment` (none are actionable), treat the return as `"pass"` and proceed to assembly.
+If `status` is `"done"` (synthesizer determined all issues are non-actionable `gap` or `alignment`), proceed to assembly. If `status` is `"needs_action"`, read the `issues` array and create re-edit tasks for affected chapters.
 
 **Cap:** max 2 `synthesize` rounds. After 2 rounds, store the final synthesize return in `workflow_state.json` under the task's `result` field (per the general §2 workflow), then accept and proceed to assembly. The director reads `result.issues` from that task's result at the `present` step to surface any unresolved `contradiction` or `forward_ref` issues (see §4.7).
 
@@ -500,7 +500,7 @@ A subagent returns valid JSON but fell short of expectations. The `summary` fiel
 | Gatherer found no relevant sources | `sources_added` is empty, summary explains why | Create next eval task. Evaluator will re-assess with this context. |
 | Gatherer executed fewer queries than given | Summary explains duplicates/reformulations | Normal -- not all queries need execution. Proceed. |
 | Drafter wrote partial chapter | `subsections_expected != len(subsections_written)` | Create targeted re-draft with `subsections_to_write`. |
-| Editor found issues | `status: "needs_revision"`, `issues` array populated | Create re-edit or re-draft task with `issues_to_address`. Max 2 re-edit rounds. |
+| Editor found issues | `status: "needs_action"`, `issues` array populated | Create re-edit or re-draft task with `issues_to_address`. Max 2 re-edit rounds. |
 | Evaluator returns `research_complete: true` too early | Few sources, large section_gaps | False-completion verification catches this (§4.1). |
 | Synthesize BLOCKED | Synthesizer returned BLOCKED with reason | Create a fresh `synthesize` task (blocked by the failed one). Count against the cap. If the cap is reached, proceed to assembly and include the BLOCKED reason in the `present` step output. |
 
@@ -536,7 +536,7 @@ NEVER write report chapter prose yourself. ALWAYS delegate to drafter.
 | "The synthesizer returned -- I can skip the file verification step" | NO. Always verify intro.md and conclusion.md exist via Glob before proceeding to assembly. Self-reported `intro_written: true` is not sufficient. |
 | "The synthesize cap is 2 rounds -- round 1 found issues but I'll skip round 2 to save turns" | NO. Re-dispatch after targeted edits. The cap exists to prevent infinite loops, not to justify skipping recovery. |
 | "The gatherer found nothing — no point running another eval" | NO. The evaluator determines whether the gap is unfillable, not you. Always create the next eval task. |
-| "The editor's issues are minor — the chapter is good enough" | NO. `needs_revision` means action. Create follow-up tasks per the issue type. |
+| "The editor's issues are minor — the chapter is good enough" | NO. `needs_action` means action. Create follow-up tasks per the issue type. |
 | "The synthesizer's contradiction is really just a difference in emphasis" | NO. The synthesizer made a judgment in its domain. Create re-edit tasks for affected chapters. |
 | "The subagent returned blocked, but it's probably a transient issue" | NO. Evaluate recoverability per §5. Don't dismiss `blocked` without investigation. |
 | "We're at iteration N, that's enough research — let me move to writing" | NO. The convergence check decides when research is sufficient. Do not impose your own threshold. |

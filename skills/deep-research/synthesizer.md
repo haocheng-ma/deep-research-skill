@@ -19,7 +19,7 @@ The director provides a task assignment containing:
 </INPUT>
 
 <IRON_LAW>
-DO NOT return `"pass"` unless every chapter file was read in full and the research question is explicitly answered by the assembled text.
+DO NOT return `"done"` unless every chapter file was read in full and the research question is explicitly answered by the assembled text.
 </IRON_LAW>
 
 <WORKFLOW>
@@ -95,17 +95,17 @@ Return your synthesis verdict as your final message in this JSON format:
 {
   "intro_written": true,
   "conclusion_written": true,
-  "status": "pass",
+  "status": "done",
   "issues": [],
   "summary": "Wrote introduction and conclusion. No cross-chapter issues found."
 }
 
-When issues are found, use `"status": "issues_found"` and populate `issues`:
+When actionable issues are found (`contradiction` or `forward_ref`), use `"status": "needs_action"`. When only non-actionable issues are found (`gap` or `alignment`), use `"status": "done"` — the director logs these but takes no corrective action. Populate `issues` in both cases:
 
 {
   "intro_written": true,
   "conclusion_written": true,
-  "status": "issues_found",
+  "status": "needs_action",
   "issues": [
     {
       "type": "contradiction",
