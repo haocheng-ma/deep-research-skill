@@ -128,6 +128,24 @@ Before dispatching `eval-1`:
 
 ## 4. Task Dispatch Rules (Core Loop)
 
+### Pipeline
+
+```
+eval-1 → gather-1 → eval-2 → gather-2 → ... → eval-N (research complete)
+                                                   ↓
+                                    draft-ch1, draft-ch2, ..., draft-chK  (parallel)
+                                                   ↓
+                                    edit-ch1,  edit-ch2,  ..., edit-chK   (parallel)
+                                                   ↓
+                                              synthesize-1
+                                                   ↓
+                                          actionable issues?
+                                           ↙              ↘
+                                     re-edit(s)          no → assemble
+                                         ↓
+                                    synthesize-2 → assemble
+```
+
 This is the main control loop. Execute it on every turn after the outline is created.
 
 ```
