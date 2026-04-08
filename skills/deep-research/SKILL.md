@@ -67,6 +67,7 @@ Create `{workspace}/workflow_state.json`:
   "workflow_id": "<topic-slug>-<timestamp>",
   "created_at": "<ISO-8601>",
   "research_question": "<user's original query>",
+  "language": "<detected language>",
   "tasks": [
     {
       "id": "eval-1",
@@ -101,7 +102,8 @@ If you resume a conversation and `workflow_state.json` already exists, read it a
 Before dispatching `eval-1`:
 
 1. Analyze the user query to identify key dimensions and subtopics
-2. Create a hierarchical outline (up to 4 levels deep) and persist:
+2. Identify the language of the research question. If ambiguous or indeterminate, use `"English"`. Store as `language` in `workflow_state.json`.
+3. Create a hierarchical outline (up to 4 levels deep) with headings in the detected language, and persist:
    ```
    Write(file_path="{workspace}/outline.md", content=<outline>)
    ```
@@ -115,8 +117,8 @@ Before dispatching `eval-1`:
    ### 2.2 [Subtopic]
    ...
    ```
-3. The initial outline has NO `[sources: ...]` annotations -- that is expected
-4. Initialize the source index:
+4. The initial outline has NO `[sources: ...]` annotations -- that is expected
+5. Initialize the source index:
    ```
    Write(file_path="{workspace}/source_index.json", content='{"page_info": {}, "url2id": {}, "executed_queries": []}')
    ```
