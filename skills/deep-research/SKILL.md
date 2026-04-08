@@ -195,11 +195,19 @@ If `research_complete` is `false`:
    - Apply outline evolution BEFORE creating the gather task.
 
 2. **Convergence check:**
-   Compare this evaluator's `section_gaps` against the prior evaluator result (both stored in `workflow_state.json` task results):
-   a. For each gap in the current `section_gaps`, check if the same section key appeared in the prior evaluator's `section_gaps`
-   b. If yes, check the intervening gatherer's `sources_added` -- did it add any sources for that section?
-   c. If the same section persists in `section_gaps` for 2+ consecutive iterations AND the gatherer found 0 new sources for that section: treat the gap as unfillable. Append the section name to a top-level `known_unfillable_gaps` array in `workflow_state.json` (create the key if it does not exist).
-   d. If no remaining gaps are actionable (all persistent gaps are unfillable): proceed to writing tasks. Log the decision in `workflow_state.json` as `"forced_completion"` with reason.
+   ```
+   Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py {workspace}/workflow_state.json")
+   ```
+   Read the JSON output:
+   - If `actionable_gaps_remain` is `true`: create a gather task (step 3 below).
+   - If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` from the output into `workflow_state.json`.
+   - If `forced_completion` is `true`: log the `reason` in `workflow_state.json`.
+
+   **Script failure:** If the script exits non-zero, read stderr.
+   - Malformed `workflow_state.json`: fix the JSON structure and re-run.
+   - Missing task chain (no completed eval tasks): treat as iteration 1 — create the first eval task.
+   - Python unavailable: this is a configuration error. Inform the user.
+   Do not fall back to manual convergence checking — that reintroduces the problem the script solves.
 
 3. **If actionable gaps remain:** Create a `gather` task blocked by this eval task:
    ```json
@@ -216,7 +224,11 @@ If `research_complete` is `false`:
 
 If `research_complete` is `true` -- **run false-completion verification:**
 
-1. **Build the unfillable-gaps list** from the convergence check history in `workflow_state.json`: scan all evaluator results for gaps that persisted 2+ consecutive iterations with 0 new sources from the intervening gatherer.
+1. **Build the unfillable-gaps list** by running the convergence check script:
+   ```
+   Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py {workspace}/workflow_state.json")
+   ```
+   Use the `known_unfillable_gaps` array from the output.
 
 2. Re-dispatch the evaluator with **fresh context**:
    ```json
