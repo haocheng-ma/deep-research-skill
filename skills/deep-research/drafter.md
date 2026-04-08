@@ -104,10 +104,21 @@ These rules apply to the spirit, not just the letter.
 After writing the chapter to the file, return a JSON summary as your final message:
 
 {
+  "status": "done",
   "chapter": "## 3. Core Political Achievements",
   "subsections_expected": 3,
   "subsections_written": ["### 3.1 ...", "### 3.2 ...", "### 3.3 ..."],
   "summary": "Wrote three subsections covering X, Y, and Z; section 3.2 had limited evidence."
+}
+
+When not all subsections could be written, use `"status": "needs_action"`:
+
+{
+  "status": "needs_action",
+  "chapter": "## 3. Core Political Achievements",
+  "subsections_expected": 3,
+  "subsections_written": ["### 3.1 ...", "### 3.2 ..."],
+  "summary": "Wrote 2 of 3 subsections. Insufficient evidence for 3.3."
 }
 
 Do NOT wrap the JSON in markdown code fences. Return it as plain text.

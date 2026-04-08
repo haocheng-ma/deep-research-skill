@@ -118,6 +118,7 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 Return your evaluation as your final message in this JSON format:
 
 {
+  "status": "done",
   "research_complete": false,
   "section_gaps": {
     "Performance Benchmarks": "No cross-dataset comparison metrics found yet",
@@ -131,6 +132,7 @@ Return your evaluation as your final message in this JSON format:
 }
 
 Field descriptions:
+- `status`: always `"done"` for normal returns. The evaluator always completes its assessment task. Use `"blocked"` only per the WHEN_BLOCKED protocol.
 - `research_complete`: true if sources are sufficient for a well-supported report
 - `section_gaps`: Per-section gap descriptions (include ALL sections with non-trivial gaps)
 - `suggested_queries`: 1-3 specific, targeted search queries for the next gather round
@@ -147,6 +149,7 @@ Do NOT wrap the JSON in markdown code fences. Return it as plain text.
 <CALIBRATION_EXAMPLES>
 Example -- early stage, must continue (iteration 1):
 {
+  "status": "done",
   "research_complete": false,
   "section_gaps": {
     "Core Mechanisms": "Surface-level overview only, no implementation details",
@@ -166,6 +169,7 @@ Example -- early stage, must continue (iteration 1):
 
 Example -- mid-stage, specific gap (iteration 4):
 {
+  "status": "done",
   "research_complete": false,
   "section_gaps": {
     "Performance Benchmarks": "No cross-dataset comparison metrics found yet",
@@ -183,6 +187,7 @@ Example -- mid-stage, specific gap (iteration 4):
 
 Example -- research sufficient (iteration 6):
 {
+  "status": "done",
   "research_complete": true,
   "section_gaps": {"Future Directions": "Could include longer-term projections"},
   "suggested_queries": [],

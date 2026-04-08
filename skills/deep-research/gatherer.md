@@ -79,6 +79,7 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 Return your result as your final message in this JSON format:
 
 {
+  "status": "done",
   "sources_added": [
     {"id": 4, "title": "Page Title", "section": "### 3.1 Architecture"}
   ],
