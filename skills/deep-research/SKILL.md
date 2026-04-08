@@ -282,7 +282,7 @@ Create an eval task (`eval-<N+1>`, blocked by `gather-<N>`, iteration `<N+1>`).
        "research_question": "<user's original query>",
        "chapter": "## 3. Core Mechanisms",
        "report_path": "{outputs}/chapter-3.md",
-       "language": "English"
+       "language": "<language from workflow_state.json>"
      }),
      description="draft chapter: Core Mechanisms"
    )
@@ -304,7 +304,8 @@ Compare `subsections_expected` against `len(subsections_written)`. If they diffe
      prompt=<editor prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
        "chapter": "## 3. Core Mechanisms",
-       "report_path": "{outputs}/chapter-3.md"
+       "report_path": "{outputs}/chapter-3.md",
+       "language": "<language from workflow_state.json>"
      }),
      description="edit chapter: Core Mechanisms"
    )
@@ -318,6 +319,7 @@ Each editor works on the same per-chapter file as the drafter, so concurrent edi
   "research_question": "<user's original query>",
   "chapter": "## 3. Core Mechanisms",
   "report_path": "{outputs}/chapter-3.md",
+  "language": "<language from workflow_state.json>",
   "issues_to_address": [
     "### 3.1 has unsupported latency claims -- source 9 covers this"
   ]
@@ -365,6 +367,7 @@ For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
    Agent(
      prompt=<synthesizer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
+       "language": "<language from workflow_state.json>",
        "chapter_files": ["{outputs}/chapter-1.md", "{outputs}/chapter-2.md", ...],
        "intro_path": "{outputs}/intro.md",
        "conclusion_path": "{outputs}/conclusion.md",
