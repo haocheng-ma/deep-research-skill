@@ -114,11 +114,6 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 - You cannot determine the research question from the input: return BLOCKED with diagnostic.
 </WHEN_BLOCKED>
 
-<CRASH_RESILIENCE>
-If an evaluator task fails or times out, no workspace state has been modified.
-The director re-dispatches a new evaluator with the same task assignment.
-</CRASH_RESILIENCE>
-
 <OUTPUT_FORMAT>
 Return your evaluation as your final message in this JSON format:
 

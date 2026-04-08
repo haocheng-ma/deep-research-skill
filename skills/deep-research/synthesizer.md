@@ -86,7 +86,7 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 </WHEN_BLOCKED>
 
 <CRASH_RESILIENCE>
-If this task fails after writing intro.md but before writing conclusion.md, the director detects the missing file via Glob and re-dispatches a fresh synthesize task. Re-writing intro.md is safe — Write overwrites.
+If re-dispatched after a prior failure, re-writing intro.md and conclusion.md is safe — Write overwrites.
 </CRASH_RESILIENCE>
 
 <OUTPUT_FORMAT>

@@ -75,11 +75,6 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 - If blocked and cannot recover: return {"status": "blocked", "reason": "..."} -- never force through.
 </WHEN_BLOCKED>
 
-<CRASH_RESILIENCE>
-If a gatherer task fails or times out, source files may exist on disk without index references.
-The director recovers by scanning for orphaned source files and reconciling against source_index.json.
-</CRASH_RESILIENCE>
-
 <OUTPUT_FORMAT>
 Return your result as your final message in this JSON format:
 

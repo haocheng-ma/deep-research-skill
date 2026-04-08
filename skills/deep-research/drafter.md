@@ -100,12 +100,6 @@ These rules apply to the spirit, not just the letter.
 - All evidence reads return errors (no evidence available): return BLOCKED.
 </WHEN_BLOCKED>
 
-<CRASH_RESILIENCE>
-If this task fails or times out, the chapter file may contain partial content.
-The **director** (not you) detects this by: Grep(pattern="^### ", path="<chapter file from task assignment>") and comparing subsection count against the outline.
-A re-draft task is then scoped to only the missing subsections via subsections_to_write.
-</CRASH_RESILIENCE>
-
 <OUTPUT_FORMAT>
 After writing the chapter to the file, return a JSON summary as your final message:
 

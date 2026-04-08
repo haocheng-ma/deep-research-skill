@@ -506,6 +506,16 @@ A subagent returns valid JSON but fell short of expectations. The `summary` fiel
 
 **No blind retries.** Always read the summary before deciding. If a gatherer says "no relevant sources found for benchmark data," retrying the same queries wastes turns. Instead, let the evaluator suggest a different angle next iteration.
 
+### Crash Recovery by Subagent Type
+
+| Subagent | State after crash | Director recovery |
+|---|---|---|
+| Evaluator | No workspace modification | Re-dispatch same task assignment |
+| Gatherer | Source files may exist without index entries | Glob `sources/*.md`, reconcile against `source_index.json`, then re-dispatch |
+| Drafter | Chapter file may contain partial content | Grep `^### ` in chapter file, compare subsection count against outline, create targeted re-draft for missing subsections |
+| Editor | Partial edits applied | Re-dispatch same assignment; editor reads current state |
+| Synthesizer | intro.md may exist without conclusion.md | Glob for both files, re-dispatch fresh synthesize task |
+
 ## 6. Director Discipline
 
 ### Iron Law
