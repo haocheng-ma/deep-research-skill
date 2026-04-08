@@ -209,18 +209,7 @@ If `research_complete` is `false`:
    - Python unavailable: this is a configuration error. Inform the user.
    Do not fall back to manual convergence checking — that reintroduces the problem the script solves.
 
-3. **If actionable gaps remain:** Create a `gather` task blocked by this eval task:
-   ```json
-   {
-     "id": "gather-<N>",
-     "type": "gather",
-     "status": "pending",
-     "blocked_by": ["eval-<N>"],
-     "result": null,
-     "started_at": null,
-     "completed_at": null
-   }
-   ```
+3. **If actionable gaps remain:** Create a gather task (`gather-<N>`, blocked by `eval-<N>`).
 
 If `research_complete` is `true` -- **run false-completion verification:**
 
@@ -269,19 +258,9 @@ If `research_complete` is `true` -- **run false-completion verification:**
    ```
 
 **On return:**
-Create the next `evaluate` task blocked by this gather task:
-```json
-{
-  "id": "eval-<N+1>",
-  "type": "evaluate",
-  "status": "pending",
-  "blocked_by": ["gather-<N>"],
-  "iteration": <N+1>,
-  "result": null,
-  "started_at": null,
-  "completed_at": null
-}
-```
+Create an eval task (`eval-<N+1>`, blocked by `gather-<N>`, iteration `<N+1>`).
+
+**Normal variations:** `sources_added` may be empty (no relevant results) or the gatherer may execute fewer queries than assigned (duplicates skipped). Both are expected — proceed normally.
 
 **After gatherer returns -- verify source integrity:**
 1. `Glob(pattern="sources/*.md", path="{workspace}")` -- count actual source files on disk
@@ -310,29 +289,7 @@ Create the next `evaluate` task blocked by this gather task:
 Each drafter writes to its own chapter file (`chapter-1.md`, `chapter-2.md`, etc.) so parallel drafters don't overwrite each other.
 
 **On return -- check for partial drafts:**
-Compare `subsections_expected` against `len(subsections_written)`. If they differ, create a targeted re-draft task:
-```json
-{
-  "id": "draft-ch3-redraft-1",
-  "type": "draft",
-  "status": "pending",
-  "blocked_by": ["draft-ch3"],
-  "result": null,
-  "started_at": null,
-  "completed_at": null
-}
-```
-Dispatch the re-draft with additional fields:
-```json
-{
-  "research_question": "<user's original query>",
-  "chapter": "## 3. Core Mechanisms",
-  "report_path": "{outputs}/chapter-3.md",
-  "language": "English",
-  "subsections_to_write": ["### 3.4 Benchmarks"],
-  "note": "Previous draft covered 3.1-3.3. Write ONLY the missing subsection."
-}
-```
+Compare `subsections_expected` against `len(subsections_written)`. If they differ, create a re-draft task (`draft-ch<N>-redraft-1`, blocked by the original draft). Dispatch the re-draft with `subsections_to_write` listing only the missing subsections and a `note` instructing the drafter to write only those.
 
 ### 4.4 Dispatching `edit` tasks
 
@@ -383,21 +340,7 @@ For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
    ```
    The Introduction and Conclusion are written by the synthesizer after editing completes — do not write them here.
 
-2. **Create tasks for each `##` chapter** (skip Introduction and Conclusion):
-   ```
-   draft-ch1    (blocked_by: [eval-N])              -- draft chapter 1
-   draft-ch2    (blocked_by: [eval-N])              -- draft chapter 2
-   draft-ch3    (blocked_by: [eval-N])              -- draft chapter 3
-   edit-ch1     (blocked_by: [draft-ch1])           -- edit chapter 1
-   edit-ch2     (blocked_by: [draft-ch2])           -- edit chapter 2
-   edit-ch3     (blocked_by: [draft-ch3])           -- edit chapter 3
-   synthesize-1 (blocked_by: [edit-ch1, edit-ch2, edit-ch3])
-   present      (blocked_by: [synthesize-1])
-   ```
-
-   Draft tasks share the same blocker (`eval-N`), so all dispatch concurrently in a single message (batch 1). After all drafts complete, edit tasks become runnable and dispatch concurrently (batch 2). Each batch is one director turn.
-
-   Each drafter writes to its own chapter file (`{outputs}/chapter-1.md`, `{outputs}/chapter-2.md`, etc.), and each editor works on the same per-chapter file. This eliminates file contention between parallel agents.
+2. **Create tasks for each `##` chapter** (skip Introduction and Conclusion): draft, edit, synthesize, present — following the pipeline in §4. Draft tasks share the same blocker (`eval-N`), so all dispatch concurrently in a single message (batch 1). After all drafts complete, edit tasks become runnable and dispatch concurrently (batch 2). Each batch is one director turn. Each drafter writes to its own chapter file (`{outputs}/chapter-1.md`, `{outputs}/chapter-2.md`, etc.), and each editor works on the same per-chapter file. This eliminates file contention between parallel agents.
 
 3. **Assemble the report:** After the final synthesize task returns `"done"` (or the cap is reached):
    a. Read `{outputs}/intro.md`, all chapter files in outline order, and `{outputs}/conclusion.md`
@@ -454,6 +397,8 @@ If `status` is `"done"` (synthesizer determined all issues are non-actionable `g
 
 **Cap:** max 2 `synthesize` rounds. After 2 rounds, store the final synthesize return in `workflow_state.json` under the task's `result` field (per the general §2 workflow), then accept and proceed to assembly. The director reads `result.issues` from that task's result at the `present` step to surface any unresolved `contradiction` or `forward_ref` issues (see §4.7).
 
+**Synthesizer BLOCKED:** Create a fresh `synthesize` task (blocked by the failed one), count against the cap. If cap reached, proceed to assembly and include the BLOCKED reason in §4.7.
+
 ### 4.7 Presenting the report
 
 Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents.
@@ -469,54 +414,16 @@ Workflow complete.
 
 ## 5. Error Handling
 
-Three failure layers, each with different signal and response.
-
-### Layer 1: Agent failure
-
-The `Agent()` tool may return an error when a subagent fails. Common patterns:
-- Subagent exceeded context window
-- Subagent produced no output
-- Tool permission denied
-
 **Retry policy:**
 
 | Failure type | Action |
 |---|---|
 | Context overflow | Retry with a narrower task scope (fewer queries, single subsection). |
 | No output | Retry up to 2 times with the same input. |
-| Permission denied | Mark `"failed"` -- this is a configuration issue. |
+| Permission denied | Mark `"failed"` — configuration issue. |
+| Malformed return (non-JSON) | Retry once with same input. If still non-JSON, mark `"failed"`. |
 
-When a task is marked `"failed"`:
-- Update its `status` to `"failed"` and store the error in `result`
-- Tasks that depend on it (`blocked_by` includes this task) should be evaluated: can they proceed without this result? If not, mark them `"failed"` too.
-- For research tasks (`evaluate`/`gather`): create the next task in the loop to try a fresh iteration
-- For writing tasks (`draft`/`edit`): skip the chapter if needed; the report will note incomplete coverage
-
-### Layer 2: Malformed return
-
-A subagent completes but returns text that is not valid JSON.
-
-**Action:**
-1. Treat the raw text as an explanation of what happened
-2. Retry once with the same dispatch input
-3. If the second attempt also returns non-JSON, mark the task `"failed"` and store the raw text in `result`
-
-### Layer 3: Quality shortfall
-
-A subagent returns valid JSON but fell short of expectations. The `summary` field on every return contract explains what succeeded and what fell short.
-
-**Action -- read the summary and structured fields together:**
-
-| Scenario | Signal | Director action |
-|---|---|---|
-| Gatherer found no relevant sources | `sources_added` is empty, summary explains why | Create next eval task. Evaluator will re-assess with this context. |
-| Gatherer executed fewer queries than given | Summary explains duplicates/reformulations | Normal -- not all queries need execution. Proceed. |
-| Drafter wrote partial chapter | `subsections_expected != len(subsections_written)` | Create targeted re-draft with `subsections_to_write`. |
-| Editor found issues | `status: "needs_action"`, `issues` array populated | Create re-edit or re-draft task with `issues_to_address`. Max 2 re-edit rounds. |
-| Evaluator returns `research_complete: true` too early | Few sources, large section_gaps | False-completion verification catches this (§4.1). |
-| Synthesize BLOCKED | Synthesizer returned BLOCKED with reason | Create a fresh `synthesize` task (blocked by the failed one). Count against the cap. If the cap is reached, proceed to assembly and include the BLOCKED reason in the `present` step output. |
-
-**No blind retries.** Always read the summary before deciding. If a gatherer says "no relevant sources found for benchmark data," retrying the same queries wastes turns. Instead, let the evaluator suggest a different angle next iteration.
+When a task fails: mark `"failed"`, cascade to dependent tasks. Research tasks: create next iteration. Writing tasks: skip chapter.
 
 ### Crash Recovery by Subagent Type
 
@@ -538,21 +445,14 @@ NEVER write report chapter prose yourself. ALWAYS delegate to drafter.
 
 | Temptation | Reality |
 |---|---|
-| "This chapter is simple, I'll write it myself to save turns" | NO. Every body chapter goes through drafter. Your prose lacks evidence grounding and citations. |
+| "I'll write [the chapter / intro / conclusion] myself to save turns" | NO. All prose goes through its designated subagent. Your output lacks evidence grounding, citations, and whole-document context. |
 | "The gatherer probably wrote the files even though the count doesn't match" | NO. Verify with `Glob(pattern="sources/*.md")`. Trust disk state, not claims. |
 | "The subsection count is close enough -- 3 of 4 is fine" | NO. Create a re-draft for the missing subsection. Partial chapters produce incomplete reports. |
 | "I'll skip the editor for this short chapter" | NO. Every chapter gets an editor pass. Short chapters often have the weakest citations. |
-| "The evaluator keeps saying not complete, but I should just move to writing" | The convergence check in §4.1 handles this. If gaps persist 2+ iterations with 0 new sources, they are treated as unfillable. Do not bypass the check. |
-| "I'll re-dispatch the same failing task one more time" | Check the retry policy in §5. If you've hit the limit, mark failed and continue. |
-| "The chapters are done — I'll write the intro and conclusion myself to save turns" | NO. Every intro and conclusion goes through the synthesizer. Your prose lacks whole-document perspective and cross-chapter context. |
-| "The synthesizer returned -- I can skip the file verification step" | NO. Always verify intro.md and conclusion.md exist via Glob before proceeding to assembly. Self-reported `intro_written: true` is not sufficient. |
-| "The synthesize cap is 2 rounds -- round 1 found issues but I'll skip round 2 to save turns" | NO. Re-dispatch after targeted edits. The cap exists to prevent infinite loops, not to justify skipping recovery. |
+| "The [editor's / synthesizer's] issues are minor — the chapter is good enough" | NO. `needs_action` means action. The subagent made a judgment in its domain. Create follow-up tasks per the protocol. |
+| "I can skip [file verification / false-completion verification]" | NO. Always verify. Self-reported status is not evidence. |
 | "The gatherer found nothing — no point running another eval" | NO. The evaluator determines whether the gap is unfillable, not you. Always create the next eval task. |
-| "The editor's issues are minor — the chapter is good enough" | NO. `needs_action` means action. Create follow-up tasks per the issue type. |
-| "The synthesizer's contradiction is really just a difference in emphasis" | NO. The synthesizer made a judgment in its domain. Create re-edit tasks for affected chapters. |
 | "The subagent returned blocked, but it's probably a transient issue" | NO. Evaluate recoverability per §5. Don't dismiss `blocked` without investigation. |
-| "We're at iteration N, that's enough research — let me move to writing" | NO. The convergence check decides when research is sufficient. Do not impose your own threshold. |
-| "The evaluator is confident this time — I can skip false-completion verification" | NO. Always verify. Premature completion is the evaluator's most common failure mode. |
 
 These rules apply to the spirit, not just the letter. Finding a creative interpretation that technically doesn't violate a rule but achieves the same outcome IS a violation.
 
@@ -560,13 +460,9 @@ These rules apply to the spirit, not just the letter. Finding a creative interpr
 
 If you catch yourself thinking:
 - "probably fine" / "close enough" / "good enough"
-- "the [subagent] was probably confused"
+- "to save turns" / "I'll just..."
+- "the [subagent] was probably confused" / "is being too conservative"
 - "this is minor" / "readers won't notice"
-- "to save turns" / "to speed things up"
-- "I'll just..."
-- "the evaluator is being too conservative"
-- "this contradiction is really just..."
-- "we have enough"
 
 **STOP. Re-read the subagent's return JSON. Follow the protocol in §4 for that task type. Do not proceed until you have.**
 
