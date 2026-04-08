@@ -4,9 +4,22 @@ Every subagent returns structured JSON as its final message. The director reads 
 
 All dispatches include `research_question` as anchoring context in the task assignment.
 
+## Status vocabulary
+
+Every subagent return includes a `status` field:
+
+| Status | Meaning | Director action |
+|---|---|---|
+| `done` | Task completed. Follow the normal task DAG. | Read type-specific fields for follow-up task creation. |
+| `needs_action` | Task completed but corrective action needed beyond the normal DAG. | Read type-specific fields to scope follow-up tasks. |
+| `blocked` | Task could not complete. | Error handling per §5. |
+
+**Precedence rule:** The `status` field is a routing hint, not a bypass for verification gates. If the director's independent verification contradicts self-reported status (e.g., drafter reports `done` but subsection count shows 3 of 4), the director treats the task as `needs_action` regardless of the reported status. Director verification always takes precedence over self-reported status.
+
 ## Evaluator return contract
 ```json
 {
+  "status": "done",
   "research_complete": false,
   "section_gaps": {
     "Performance Benchmarks": "No cross-dataset comparison metrics"
@@ -22,6 +35,7 @@ All dispatches include `research_question` as anchoring context in the task assi
 ## Gatherer return contract
 ```json
 {
+  "status": "done",
   "sources_added": [
     {"id": 4, "title": "Page Title", "section": "### 3.1 Architecture"}
   ],
@@ -32,6 +46,7 @@ All dispatches include `research_question` as anchoring context in the task assi
 ## Drafter return contract
 ```json
 {
+  "status": "needs_action",
   "chapter": "## 3. Core Mechanisms",
   "subsections_expected": 4,
   "subsections_written": ["### 3.1 Architecture", "### 3.2 Training"],
@@ -43,33 +58,33 @@ All dispatches include `research_question` as anchoring context in the task assi
 ```json
 {
   "chapter": "## 3. Core Mechanisms",
-  "status": "pass",
+  "status": "done",
   "enrichments_made": 5,
   "citations_added": 3,
   "issues": [],
   "summary": "Enriched 5 claims, added 3 citations."
 }
 ```
-When issues found, `status` is `"needs_revision"` and `issues` contains specific problems.
+When issues found, `status` is `"needs_action"` and `issues` contains specific problems.
 
 ## Synthesizer return contract
 ```json
 {
+  "status": "done",
   "intro_written": true,
   "conclusion_written": true,
-  "status": "pass",
   "issues": [],
   "summary": "Wrote introduction and conclusion. No cross-chapter issues found."
 }
 ```
 
-When issues are found, `status` is `"issues_found"` and `issues` contains specific problems:
+When actionable issues are found (`contradiction` or `forward_ref`), `status` is `"needs_action"`. When only non-actionable issues are found (`gap` or `alignment`), `status` is `"done"`. The `issues` array is populated in both cases:
 
 ```json
 {
+  "status": "needs_action",
   "intro_written": true,
   "conclusion_written": true,
-  "status": "issues_found",
   "issues": [
     {
       "type": "contradiction",
