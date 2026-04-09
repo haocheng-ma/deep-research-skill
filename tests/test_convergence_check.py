@@ -6,7 +6,7 @@ import sys
 import tempfile
 import os
 
-SCRIPT = os.path.join(os.path.dirname(__file__), "..", "scripts", "convergence_check.py")
+SCRIPT = os.path.join(os.path.dirname(__file__), "..", "skills", "deep-research", "scripts", "convergence_check.py")
 
 
 def run_script(workflow_state: dict) -> dict:
