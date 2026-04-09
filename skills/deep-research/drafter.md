@@ -61,6 +61,8 @@ Follow the CECI pattern for every subsection:
 **Implication** -- What does this mean for the broader topic? Why does it matter?
 
 Not every paragraph needs all four elements rigidly, but every subsection must contain substantive analysis (not just fact enumeration). Each subsection should have at least 2 paragraphs of analytical content.
+
+The Comparison and Implication steps carry the analysis. A subsection that stops at Evidence reads as a fact list — always complete the full cycle.
 </WRITING_METHOD>
 
 <CITATION_FORMAT>
