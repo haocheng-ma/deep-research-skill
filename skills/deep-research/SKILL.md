@@ -240,11 +240,14 @@ If `research_complete` is `false`:
    - Write the revised outline
    - Apply outline evolution BEFORE creating the gather task.
 
-2. **Convergence check:**
+2. **HARD GATE: Run convergence_check.py**
    ```
-   Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py {workspace}/workflow_state.json")
+   Bash(command="python3 <convergence_script from workflow_state.json> {workspace}/workflow_state.json")
    ```
-   Read the JSON output:
+
+   The script output determines the next action. There is no alternative path.
+   Do not assess convergence yourself. Do not skip this step.
+
    - If `actionable_gaps_remain` is `true`: create a gather task (step 3 below).
    - If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` from the output into `workflow_state.json`.
    - If `forced_completion` is `true`: log the `reason` in `workflow_state.json`.
@@ -255,13 +258,20 @@ If `research_complete` is `false`:
    - Python unavailable: this is a configuration error. Inform the user.
    Do not fall back to manual convergence checking — that reintroduces the problem the script solves.
 
+   The false-completion verification path (`research_complete: true`) also invokes the convergence script using the stored `convergence_script` path. That invocation follows the same rules.
+
+   | Temptation | Reality |
+   |---|---|
+   | "I can see the gaps are real — no need to run the script" | The script tracks gap *persistence* across iterations, not gap *existence*. Your judgment about whether a gap is real is not the same as whether it's fillable. |
+   | "The script crashed last time, I'll skip it" | Fix the input (workflow_state.json format) and re-run. The script failure protocol exists for this. Manual convergence checking is explicitly forbidden. |
+
 3. **If actionable gaps remain:** Create a gather task (`gather-<N>`, blocked by `eval-<N>`).
 
 If `research_complete` is `true` -- **run false-completion verification:**
 
 1. **Build the unfillable-gaps list** by running the convergence check script:
    ```
-   Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py {workspace}/workflow_state.json")
+   Bash(command="python3 <convergence_script from workflow_state.json> {workspace}/workflow_state.json")
    ```
    Use the `known_unfillable_gaps` array from the output.
 
