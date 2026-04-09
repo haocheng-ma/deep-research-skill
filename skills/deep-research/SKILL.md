@@ -392,17 +392,72 @@ Each editor works on the same per-chapter file as the drafter, so concurrent edi
 When research completes (verified), read `{workspace}/outline.md` and create tasks for all chapters.
 For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
 
-1. **Initialize the report:** Write the report title only using `Write`:
-   ```
-   Write(file_path="{outputs}/report.md", content="# <title>\n")
-   ```
-   The Introduction and Conclusion are written by the synthesizer after editing completes — do not write them here.
+**Step 1 — Create all writing-phase tasks in `workflow_state.json` before dispatching any.**
 
-2. **Create tasks for each `##` chapter** (skip Introduction and Conclusion): draft, edit, synthesize, present — following the pipeline in §4. Draft tasks share the same blocker (`eval-N`), so all dispatch concurrently in a single message (batch 1). After all drafts complete, edit tasks become runnable and dispatch concurrently (batch 2). Each batch is one director turn. Each drafter writes to its own chapter file (`{outputs}/chapter-1.md`, `{outputs}/chapter-2.md`, etc.), and each editor works on the same per-chapter file. This eliminates file contention between parallel agents.
+Let COMPLETION_TASK = the task ID that confirmed research completion:
+- Normal path: the verification eval (`eval-<N>-verify`)
+- Iteration cap path: the cap-triggering eval (`eval-<N>`)
 
-3. **Assemble the report:** After the final synthesize task returns `"done"` (or the cap is reached):
-   a. Read `{outputs}/intro.md`, all chapter files in outline order, and `{outputs}/conclusion.md`
-   b. Concatenate in order: intro + chapters + conclusion
+The false-completion verification eval is itself a regular task: `eval-<N>-verify`, type `"evaluate"`, created and tracked in state like any other eval. Its result is stored verbatim per the State Contract (§2).
+
+Initialize the report title:
+```
+Write(file_path="{outputs}/report.md", content="# <title>\n")
+```
+The Introduction and Conclusion are written by the synthesizer after editing completes — do not write them here.
+
+Create tasks for each `##` chapter (skip Introduction and Conclusion):
+```
+For each ## chapter:
+  - draft-ch<N>:    type "draft",      blocked_by: [COMPLETION_TASK]
+  - edit-ch<N>:     type "edit",       blocked_by: ["draft-ch<N>"]
+
+After all edit tasks:
+  - synthesize-1:   type "synthesize", blocked_by: ["edit-ch2", "edit-ch3", ..., "edit-chK"]
+```
+
+Write all tasks to `workflow_state.json` with `status: "pending"` before dispatching any subagent. Each drafter writes to its own chapter file (`{outputs}/chapter-1.md`, `{outputs}/chapter-2.md`, etc.), and each editor works on the same per-chapter file. This eliminates file contention between parallel agents.
+
+**Step 2 — Enter the core loop (§2).**
+
+The same loop that drives research now drives writing:
+
+```
+LOOP:
+  Read workflow_state.json
+  runnable = pending tasks where all blocked_by are completed
+  if no runnable: proceed to assembly
+  dispatch all runnable (parallel where blocked_by allows)
+  store results verbatim per State Contract
+  create follow-up tasks if needed (re-draft, re-edit, synthesize-2)
+  Go to LOOP
+```
+
+No special-casing. Drafts become runnable when COMPLETION_TASK completes. Edits become runnable when their draft completes. Synthesizer becomes runnable when all edits complete. Re-edits after synthesizer issues follow the same pattern.
+
+Follow-up task creation and `blocked_by` chains for re-drafts, re-edits, and re-synthesis follow the existing rules in §4.3, §4.4, and §4.6. The caps (max 2 re-edit rounds per chapter, max 2 synthesize rounds) remain in effect.
+
+**Step 3 — Assembly.**
+
+After the final synthesize task returns `"done"` (or the cap is reached):
+
+1. **Generate Sources Consulted section:**
+   a. Read `{workspace}/source_index.json`
+   b. If `source_index.json` is empty or `page_info` has zero entries, skip this step and log the absence. Do not fail assembly over a missing sources section.
+   c. For each entry in `page_info`, ordered by numeric ID (integer sort, not string sort), format as: `[N] Title. URL`
+   d. Write to `{outputs}/references.md`:
+      ```
+      ## Sources Consulted
+
+      [1] Source Title. https://example.com/source
+      [2] Another Source. https://example.com/another
+      ...
+      ```
+   The section is titled "Sources Consulted" rather than "References" because the report body uses `[citation:Title](URL)` inline citations with no numeric back-references to this list.
+
+2. **Assemble the report:**
+   a. Read `{outputs}/intro.md`, all chapter files in outline order, `{outputs}/conclusion.md`, and `{outputs}/references.md` (if generated)
+   b. Concatenate in order: intro + chapters + conclusion + references
    c. Write atomically — use a temp file then rename:
       ```
       Write(file_path="{outputs}/report.md.tmp", content=<assembled report>)
