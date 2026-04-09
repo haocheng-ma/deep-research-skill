@@ -68,6 +68,38 @@ All subsequent paths in this document use `{workspace}` and `{outputs}` as short
 
 ## 2. Workflow State Management
 
+### State Contract
+
+```
+STORE SUBAGENT RETURNS VERBATIM. NO SUMMARIZING, NO KEY RENAMING, NO FIELD OMISSION.
+```
+
+| Temptation | Reality |
+|---|---|
+| "I'll summarize the result to save tokens" | `convergence_check.py` parses `section_gaps` keys and `sources_added[].section` fields by exact substring match. Summarized keys break the match silently. |
+| "The key information is what matters, not the exact format" | The state file is a machine-readable contract, not a human log. Downstream consumers parse it programmatically. |
+| "I'll store the count instead of the full array" | `sources_added` must be iterable. An integer crashes the convergence script. |
+| "I'll shorten the section name for readability" | The convergence script matches gap keys against source section strings. `"2. Demographics"` does not substring-match `"### 2.1 Current Elderly Population"`. The evaluator's original key would. |
+| "I'll reconstruct the data later if needed" | Reconstruction from conversation memory is lossy. The original return is available now. Store it now. |
+
+These rules apply to the spirit, not just the letter. Finding a creative interpretation that technically doesn't violate a rule but achieves the same outcome IS a violation.
+
+**Result schema reference:**
+
+After a subagent returns, copy its entire JSON return into the task's `result` field. The following table lists the required fields per task type. If the return contains all listed fields, the state is correct. If any field is missing, the subagent returned a malformed response — log the discrepancy but store what was returned; do not invent missing fields.
+
+| Task type | Required `result` fields | Source |
+|---|---|---|
+| `evaluate` | `status`, `research_complete`, `section_gaps`, `suggested_queries`, `priority_section`, `knowledge_gap`, `outline_evolution`, `summary` | evaluator.md output schema |
+| `gather` | `status`, `sources_added` (array of `{id, title, section}`), `summary` | gatherer.md output schema |
+| `draft` | `status`, `chapter`, `subsections_expected`, `subsections_written`, `summary` | drafter.md output schema |
+| `edit` | `chapter`, `status`, `issues`, `enrichments_made`, `citations_added`, `summary` | editor.md output schema |
+| `synthesize` | `intro_written`, `conclusion_written`, `status`, `issues`, `summary` | synthesizer.md output schema |
+
+The Iron Law prohibits the director from dropping fields that the subagent returned. This table helps detect when a subagent's return is itself incomplete — in that case, store the incomplete return verbatim and log the missing fields.
+
+---
+
 ### First turn
 
 Create `{workspace}/workflow_state.json`:
@@ -78,6 +110,8 @@ Create `{workspace}/workflow_state.json`:
   "created_at": "<ISO-8601>",
   "research_question": "<user's original query>",
   "language": "<detected language>",
+  "convergence_script": "<absolute path, set during workspace init step 5>",
+  "known_unfillable_gaps": [],
   "tasks": [
     {
       "id": "eval-1",
