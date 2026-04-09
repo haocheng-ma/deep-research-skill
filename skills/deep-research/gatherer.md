@@ -34,10 +34,21 @@ Always use these **exact paths** when calling tools:
    a. Check executed_queries from the source index. If your query is semantically
       equivalent to one already executed, skip it. You MUST NOT re-search
       queries that cover the same information -- even with different wording.
+      Target 3+ independent sources per major claim area (i.e., per outline
+      subsection). When a search returns one comprehensive source, run follow-up
+      queries with different phrasing targeting different organizations or
+      publications to find corroborating sources.
+      Queries targeting the same topic but different source ecosystems are NOT
+      semantically equivalent. "WHO malaria statistics 2024" and "PMI malaria
+      metrics 2024" target different organizations and should both be executed.
+      However, do not execute more than 3 queries for the same topic targeting
+      different organizations in a single gather round — spread remaining
+      source-diversity queries across subsequent iterations if needed.
    b. WebSearch(query="your query")
    c. For each relevant result URL not already in url2id:
       - Fetch the page: WebFetch(url="<url>")
       - Save the content: Write(file_path="{workspace}/sources/{next_id}.md", content=<fetched content>)
+      - Preserve exact numerical values, entity names, and dates from fetched content — do not summarize or paraphrase data. The drafter and editor cannot cite what the gatherer didn't capture.
       Increment next_id.
 
 3. After ALL fetches complete -- exactly once:
