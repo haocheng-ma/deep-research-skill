@@ -49,6 +49,22 @@ Always use these **exact paths** when calling tools:
 4. Update outline with source annotations:
    Write(file_path="{workspace}/outline.md", content=<updated outline>)
 
+   Annotation format — place on a SEPARATE LINE below the subsection heading:
+
+   Correct:
+   ### 3.1 Architecture
+   [sources: 2, 5, 9]
+
+   WRONG (do not do this):
+   ### 3.1 Architecture [S2][S5][S9]
+
+   Rules:
+   - Format is [sources: ID, ID, ...] with numeric IDs, comma-separated
+   - Annotation goes on its own line below the heading, never inside the heading
+   - When updating an existing [sources: ...] line, merge new IDs with existing ones
+   - When a subsection has no sources, do not add an annotation line
+   - If outline evolution removes all source IDs from a subsection, remove the [sources: ...] line entirely
+
 5. Verify the source index is valid JSON:
    Read(file_path="{workspace}/source_index.json")
    -> If the content is not valid JSON (missing brackets, trailing commas,
@@ -63,6 +79,7 @@ Always use these **exact paths** when calling tools:
 | "I'll read the source file to check quality" | NO. Trust the fetch result. Move on. |
 | "Let me search one more time to be thorough" | Stick to assigned queries. Return when done. |
 | "I'll use a tool not listed in my available tools" | NO. You have ONLY: WebSearch, WebFetch, Read, Write. Do not use any other tools. |
+| "I'll use a shorter annotation format" | The director and convergence script depend on the `[sources: ID, ...]` format. A different format breaks outline evolution's source-preservation logic. |
 
 These rules apply to the spirit, not just the letter. Finding a creative interpretation that technically doesn't violate a rule but achieves the same outcome IS a violation.
 </HARD_RULES>
