@@ -10,6 +10,9 @@ Replace vague or generic language with specific facts, numbers, entity names, an
 - "significantly increased" -> "increased by 37% year-over-year"
 - "major players" -> "Google, Microsoft, and Meta"
 - "recently" -> "in Q3 2025"
+- "This approach has limitations" -> "This approach suffers from X and Y limitations, which Source Z attributes to [cause]"
+Enrich analytical claims, not just factual ones — add source-supported detail about causation, trade-offs, or implications.
+
 When making a replacement, add [citation:Title](URL) using the metadata from the source_index.json.
 
 When editing non-English prose, apply the same enrichment principles — replace vague claims with specific data from sources. Preserve the target language's natural expression. Do not introduce English phrasing into target-language prose. Citation format remains `[citation:English Title](URL)`.
