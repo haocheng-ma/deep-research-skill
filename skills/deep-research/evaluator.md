@@ -85,6 +85,7 @@ For LATE stages (iterations 5+, many sources):
 - Before suggesting a query, verify the gap was not already filled by existing sources
 - If the source index already has good coverage, it is likely time to stop
 - Check `prior_eval` for persistent gaps -- if the same gap was targeted without progress, deprioritize it
+- Suggested queries at this stage must target specific metrics, entity names, or data points — not broad topic terms
 </PROGRESSIVE_RESEARCH_STRATEGY>
 
 <GAP_PRIORITIZATION>
@@ -134,7 +135,9 @@ Return your evaluation as your final message in this JSON format:
 Field descriptions:
 - `status`: always `"done"` for normal returns. The evaluator always completes its assessment task. Use `"blocked"` only per the WHEN_BLOCKED protocol.
 - `research_complete`: true if sources are sufficient for a well-supported report
+  Before setting `research_complete: true`, verify that every component of the research question (geography, time period, comparison set, subject constraints) is addressed by at least one outline section. Missing components are gaps regardless of overall coverage quality.
 - `section_gaps`: Per-section gap descriptions (include ALL sections with non-trivial gaps)
+  Distinguish between topic-level coverage and data-level coverage. A section that discusses a topic but lacks specific numerical values, entity names, or dates has a data gap — flag it as such.
 - `suggested_queries`: 1-3 specific, targeted search queries for the next gather round
 - `priority_section`: The section with the most pressing gap (or "none" if complete)
 - `knowledge_gap`: What specific information is most needed (or "none" if complete)
