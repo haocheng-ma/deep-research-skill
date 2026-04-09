@@ -54,6 +54,16 @@ Before any research begins:
    Bash(command="echo '.deep-research/' >> .gitignore")
    ```
 
+5. **Verify convergence script:**
+   Resolve the script path relative to the skill directory:
+   ```
+   Bash(command="python3 ${CLAUDE_SKILL_DIR}/../../scripts/convergence_check.py --help 2>&1 || echo SCRIPT_NOT_FOUND")
+   ```
+   - If the output contains `SCRIPT_NOT_FOUND` or exits non-zero: **STOP. Report the error to the user. Do not proceed to outline creation.**
+   - If successful: store the resolved absolute path in `workflow_state.json` as `"convergence_script"`.
+
+6. **Confirm workspace is operational** before creating the outline or dispatching any subagent.
+
 All subsequent paths in this document use `{workspace}` and `{outputs}` as shorthand for the full paths established here. When constructing subagent prompts, substitute these placeholders with the actual paths.
 
 ## 2. Workflow State Management
