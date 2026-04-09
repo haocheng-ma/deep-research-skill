@@ -36,6 +36,7 @@ DO NOT return `"done"` unless every chapter file was read in full and the resear
 2. Write the Introduction to `intro_path`:
    - Open with the research question and why it matters
    - Briefly preview the structure and key findings of the report
+   - Include an explicit scope statement — geography, time period, and knowledge cutoff dates where relevant
    - Do not introduce claims not supported by the chapters
    Write(file_path="<intro_path>", content=<introduction prose>)
 
@@ -43,6 +44,8 @@ DO NOT return `"done"` unless every chapter file was read in full and the resear
    - Synthesize the key findings from all chapters
    - Identify the overarching answer to the research question
    - Note remaining open questions or limitations acknowledged by the chapters
+   - Where appropriate, identify future directions or emerging implications that the evidence points toward but does not fully resolve
+   - Acknowledge known_unfillable_gaps in the Conclusion as explicit limitations on the research scope
    Write(file_path="<conclusion_path>", content=<conclusion prose>)
 
 4. Perform cross-chapter checks against the passages you noted while reading:
