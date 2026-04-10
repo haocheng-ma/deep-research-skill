@@ -312,36 +312,27 @@ If `research_complete` is `true`:
 
 **Construct the dispatch:**
 1. Read `${CLAUDE_SKILL_DIR}/gatherer.md`
-2. Read the last completed `evaluate` task's `result` from `workflow_state.json`
-3. Extract `suggested_queries`, `priority_section`, and `knowledge_gap`
-4. Read `{workspace}/outline.md` and extract the relevant section(s) for `outline_excerpt`
-5. Read `{workspace}/source_index.json` and extract `executed_queries` and `url2id`
-6. Dispatch:
+2. Dispatch using routing fields from the evaluator return (already in context):
    ```
    Agent(
      prompt=<gatherer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
-       "queries": ["query1", "query2"],
-       "priority_section": "## 3. Core Mechanisms",
-       "knowledge_gap": "No quantitative benchmarks comparing X and Y",
-       "outline_excerpt": "## 3. Core Mechanisms\n### 3.1 Architecture [sources: 2, 5]\n### 3.2 Training",
-       "workspace": "<workspace path>",
-       "executed_queries": ["prior query 1", "prior query 2"],
-       "url2id": {"https://example.com": 1}
+       "queries": <suggested_queries from evaluator return>,
+       "priority_section": <priority_section from evaluator return>,
+       "knowledge_gap": <knowledge_gap from evaluator return>,
+       "workspace": "<workspace path>"
      }),
      model="sonnet",
      description="gather sources for <priority_section>"
    )
    ```
 
-**On return:**
-Create an eval task (`eval-<N+1>`, blocked by `gather-<N>`, iteration `<N+1>`).
+No `Read workflow_state.json`, `Read outline.md`, or `Read source_index.json` before dispatch. The gatherer reads `outline.md` and `source_index.json` itself.
 
-**After gatherer returns -- verify source integrity:**
-1. `Glob(pattern="sources/*.md", path="{workspace}")` -- count actual source files
-2. `Read(file_path="{workspace}/source_index.json")` -- count `page_info` entries
-3. If file count != index entry count: log discrepancy but do NOT modify the source index
-4. Create next evaluate task as normal
+**On return:**
+1. Extract routing fields: `sources_added` count, one-line `summary`
+2. Write full result to disk via the atomic Bash write pattern (§2)
+3. Create an eval task (`eval-<N+1>`, blocked by `gather-<N>`, iteration `<N+1>`)
 
 ### 4.3 Dispatching `write` tasks
 
