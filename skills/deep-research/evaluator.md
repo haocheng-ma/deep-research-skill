@@ -11,11 +11,10 @@ You have access to the workspace files and can read them directly. You will:
 The director provides a task assignment containing:
 - `research_question`: The user's original query
 - `iteration`: Current research iteration number (1-based)
-- `prior_eval`: The previous evaluator result (null on first iteration)
 - `known_unfillable_gaps` (optional): Section names that cannot be filled by further search
 - `workspace`: Path to the workspace directory
 
-Use `prior_eval` for convergence detection: if the same gap was identified last time, and `executed_queries` shows those queries were run, but the gap persists -- deprioritize it.
+Gaps listed in `known_unfillable_gaps` have already been searched for and not found. Do not suggest queries for them or score them as missing coverage.
 </INPUT>
 
 <WORKFLOW>
@@ -24,7 +23,7 @@ Use `prior_eval` for convergence detection: if the same gap was identified last 
    - `page_info` contains source metadata: id -> {title, url}
    - `executed_queries` array shows what searches have been done
    - Do NOT read individual source files unless you need to verify a specific claim
-3. If `prior_eval` is provided, check for convergence: compare prior gaps against `executed_queries` and current sources
+3. Check `known_unfillable_gaps` from the task input. Skip these sections when assessing coverage — they represent gaps that prior gather rounds could not fill.
 4. Assess completeness using the EVALUATION_FRAMEWORK
 5. If research is incomplete, suggest specific follow-up queries
 </WORKFLOW>
