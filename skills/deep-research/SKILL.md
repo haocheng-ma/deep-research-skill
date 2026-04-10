@@ -238,28 +238,32 @@ LOOP:
 
 **Construct the dispatch:**
 1. Read `${CLAUDE_SKILL_DIR}/evaluator.md`
-2. Read `workflow_state.json` and find the last completed `evaluate` task (if any)
-3. Pull `prior_eval` from that task's `result` field. For iteration 1, `prior_eval` is `null`.
-4. Dispatch:
+2. Dispatch:
    ```
    Agent(
      prompt=<evaluator prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
        "iteration": <N>,
-       "prior_eval": <result from last eval task, or null>,
        "workspace": "<workspace path>",
-       "known_unfillable_gaps": <from workflow_state.json, or []>
+       "known_unfillable_gaps": <from convergence_check.py output>
      }),
      model="sonnet",
      description="evaluate research completeness"
    )
    ```
 
+No `Read workflow_state.json` before dispatch. The director tracks `iteration` (incremented after each cycle) and `known_unfillable_gaps` (from convergence_check.py output) in its own conversation context.
+
 **On return -- handle `research_complete`:**
 
 If `research_complete` is `false`:
 
-1. **Apply outline evolution** (if `outline_evolution` is non-null):
+1. **Write evaluator result to disk** via the atomic Bash write pattern (§2). This MUST happen before the convergence check — the script reads from disk.
+   ```json
+   {"id": "eval-<N>", "type": "evaluate", "status": "completed", "iteration": <N>, "result": <full evaluator return>, "completed_at": "<ISO-8601>"}
+   ```
+
+2. **Apply outline evolution** (if `outline_evolution` is non-null):
    - Read current `{workspace}/outline.md`
    - Apply the evaluator's suggested restructuring
    - Preserve `[sources: ...]` annotations:
@@ -269,7 +273,7 @@ If `research_complete` is `false`:
    - Write the revised outline
    - Apply outline evolution BEFORE creating the gather task.
 
-2. **HARD GATE: Run convergence_check.py**
+3. **HARD GATE: Run convergence_check.py**
    ```
    Bash(command="python3 <convergence_script from workflow_state.json> {workspace}/workflow_state.json")
    ```
@@ -277,7 +281,7 @@ If `research_complete` is `false`:
    The script output determines the next action. There is no alternative path.
    Do not assess convergence yourself. Do not skip this step.
 
-   - If `actionable_gaps_remain` is `true`: create a gather task (step 3 below).
+   - If `actionable_gaps_remain` is `true`: create a gather task (step 4 below).
    - If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` from the output into `workflow_state.json`.
    - If `forced_completion` is `true`: log the `reason` in `workflow_state.json`.
 
@@ -287,16 +291,20 @@ If `research_complete` is `false`:
    - Python unavailable: this is a configuration error. Inform the user.
    Do not fall back to manual convergence checking — that reintroduces the problem the script solves.
 
-3. **If actionable gaps remain:** Create a gather task (`gather-<N>`, blocked by `eval-<N>`).
+4. **If actionable gaps remain:** Create a gather task (`gather-<N>`, blocked by `eval-<N>`).
 
 If `research_complete` is `true`:
 
-1. **Run convergence_check.py** (same script, same rules as the `false` path):
+1. **Write evaluator result to disk** via the atomic Bash write pattern (§2). This MUST happen before the convergence check — the script reads from disk.
+   ```json
+   {"id": "eval-<N>", "type": "evaluate", "status": "completed", "iteration": <N>, "result": <full evaluator return>, "completed_at": "<ISO-8601>"}
+   ```
+2. **Run convergence_check.py** (same script, same rules as the `false` path):
    ```
    Bash(command="python3 <convergence_script> {workspace}/workflow_state.json")
    ```
-2. If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` in `workflow_state.json`.
-3. If `actionable_gaps_remain` is `true`: treat as non-complete. Create a gather task.
+3. If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` in `workflow_state.json`.
+4. If `actionable_gaps_remain` is `true`: treat as non-complete. Create a gather task.
 
 **Iteration cap:** If `iteration >= 10`, skip and force-proceed to writing tasks regardless of `research_complete`.
 
