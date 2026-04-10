@@ -391,19 +391,34 @@ After all write tasks:
   - synthesize-1:   type "synthesize",  blocked_by: ["write-ch2", "write-ch3", ..., "write-chK"]
 ```
 
-Write all tasks to `workflow_state.json` with `status: "pending"` before dispatching any.
+Write all tasks to `workflow_state.json` via batch Bash pattern:
 
-**Step 2 — Enter the core loop (§2).**
+```bash
+python3 -c "
+import json, sys, tempfile, os
+new_tasks = json.load(sys.stdin)
+with open('{workspace}/workflow_state.json') as f: ws = json.load(f)
+ws['tasks'].extend(new_tasks)
+with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
+    json.dump(ws, tmp, indent=2)
+os.replace(tmp.name, '{workspace}/workflow_state.json')
+" <<'TASKS_EOF'
+[{"id":"write-ch2","type":"write","status":"pending","blocked_by":["eval-5"],"result":null}, ...]
+TASKS_EOF
+```
 
-```
-LOOP:
-  Read workflow_state.json
-  runnable = pending tasks where all blocked_by are completed
-  if no runnable: proceed to assembly
-  dispatch all runnable (parallel where blocked_by allows)
-  store results verbatim per State Contract
-  Go to LOOP
-```
+**Step 2 — Dispatch writers and synthesizer procedurally.**
+
+All write tasks are immediately runnable (their only blocker is the eval task that just completed). The synthesizer is blocked by all write tasks.
+
+1. Dispatch all chapter writers in a single message (parallel execution, per §4.3)
+2. As each writer returns: extract subsection counts, write full result to disk via atomic Bash pattern
+3. After all writers return: dispatch synthesizer (per §4.6)
+4. On synthesizer return: handle status per §4.6, write result to disk via atomic Bash pattern
+5. If `needs_action` with contradictions: dispatch re-write tasks for affected chapters, then re-dispatch synthesizer (max 2 synthesize rounds)
+6. Proceed to assembly (Step 3)
+
+Do NOT read `workflow_state.json` in this loop. The director tracks writer completions and synthesizer status in its conversation context.
 
 **Step 3 — Assembly.**
 
@@ -429,13 +444,13 @@ After the final synthesize task returns `"done"` (or the cap is reached):
 
 **Construct the dispatch:**
 1. Read `${CLAUDE_SKILL_DIR}/synthesizer.md`
-2. Read `workflow_state.json` and extract `known_unfillable_gaps`
+2. Use `known_unfillable_gaps` from conversation context (set during research-phase convergence) and `language` from conversation context (set at first turn)
 3. Dispatch:
    ```
    Agent(
      prompt=<synthesizer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
-       "language": "<language from workflow_state.json>",
+       "language": "<language from conversation context>",
        "chapter_files": ["{outputs}/chapter-1.md", "{outputs}/chapter-2.md", ...],
        "intro_path": "{outputs}/intro.md",
        "conclusion_path": "{outputs}/conclusion.md",
@@ -453,7 +468,7 @@ Glob for `intro.md` and `conclusion.md` in `{outputs}`. If either missing: mark 
 **On return — handle `status`:**
 - `"done"`: proceed to assembly.
 - `"needs_action"` with `contradiction` issues: create re-write tasks for affected chapters with the contradiction description as context. Create new synthesize task blocked by those writes.
-- `gap` and `alignment` issues: accept without re-dispatch. Log in workflow_state.json.
+- `gap` and `alignment` issues: accept without re-dispatch.
 
 **Cap:** max 2 synthesize rounds. After 2 rounds, accept and proceed to assembly.
 
@@ -461,7 +476,7 @@ Glob for `intro.md` and `conclusion.md` in `{outputs}`. If either missing: mark 
 
 Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents.
 
-If the synthesize cap was reached and unresolved `contradiction` issues remain (stored in the final synthesize task's `result.issues` in `workflow_state.json`), include them in your message:
+If the synthesize cap was reached and unresolved `contradiction` issues remain (from the synthesizer's return, already in context), include them in your message:
 
 > Note: the following issues were detected during synthesis but could not be resolved within the synthesis cap:
 > - [description of each unresolved contradiction from the issues array]
