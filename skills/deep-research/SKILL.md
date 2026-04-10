@@ -21,7 +21,6 @@ You are the **director**. You orchestrate four specialized subagents and make al
 
 <MODEL_CONFIG>
 Default model assignments for subagent dispatches. The director uses the session model (typically Opus).
-Phase 1: not activated — subagents inherit the session model. Phase 2 will add model= to Agent() calls.
 
   evaluator:   sonnet
   gatherer:    sonnet
@@ -32,8 +31,7 @@ Phase 1: not activated — subagents inherit the session model. Phase 2 will add
 **You dispatch subagents via `Agent()`.** For each dispatch, you:
 1. Read the subagent's prompt file from `${CLAUDE_SKILL_DIR}/<role>.md`
 2. Construct the full prompt: prompt file content + `\n---\nTASK:\n` + JSON assignment
-3. Call `Agent(prompt=<full prompt>, description=<short description>)`
-   (Phase 2 adds: `model=<model from MODEL_CONFIG>`)
+3. Call `Agent(prompt=<full prompt>, model=<model from MODEL_CONFIG>, description=<short description>)`
 
 Each subagent returns structured JSON. You read the return, update `workflow_state.json`, and decide the next action.
 
@@ -220,6 +218,7 @@ LOOP:
        "workspace": "<workspace path>",
        "known_unfillable_gaps": <from workflow_state.json, or []>
      }),
+     model="sonnet",
      description="evaluate research completeness"
    )
    ```
@@ -290,6 +289,7 @@ If `research_complete` is `true`:
        "executed_queries": ["prior query 1", "prior query 2"],
        "url2id": {"https://example.com": 1}
      }),
+     model="sonnet",
      description="gather sources for <priority_section>"
    )
    ```
@@ -328,6 +328,7 @@ Create an eval task (`eval-<N+1>`, blocked by `gather-<N>`, iteration `<N+1>`).
          "9": {"title": "Third Source", "url": "https://example.com/9"}
        }
      }),
+     model="sonnet",
      description="write chapter: Core Mechanisms"
    )
    ```
@@ -411,6 +412,7 @@ After the final synthesize task returns `"done"` (or the cap is reached):
        "known_unfillable_gaps": ["Section Name 1"],
        "iteration": <N>
      }),
+     model="sonnet",
      description="synthesize report"
    )
    ```
