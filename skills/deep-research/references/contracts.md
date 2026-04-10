@@ -14,7 +14,7 @@ Every subagent return includes a `status` field:
 | `needs_action` | Task completed but corrective action needed beyond the normal DAG. | Read type-specific fields to scope follow-up tasks. |
 | `blocked` | Task could not complete. | Error handling per §5. |
 
-**Precedence rule:** The `status` field is a routing hint, not a bypass for verification gates. If the director's independent verification contradicts self-reported status (e.g., drafter reports `done` but subsection count shows 3 of 4), the director treats the task as `needs_action` regardless of the reported status. Director verification always takes precedence over self-reported status.
+**Precedence rule:** The `status` field is a routing hint, not a bypass for verification gates. If the director's independent verification contradicts self-reported status (e.g., writer reports `done` but subsection count shows 3 of 4), the director treats the task as `needs_action` regardless of the reported status. Director verification always takes precedence over self-reported status.
 
 ## Evaluator return contract
 ```json
@@ -43,29 +43,33 @@ Every subagent return includes a `status` field:
 }
 ```
 
-## Drafter return contract
+## Writer return contract
+
+`citations_count` is new — replaces the editor's `citations_added`. The director can use it to assess citation density per chapter.
+
+```json
+{
+  "status": "done",
+  "chapter": "## 3. Core Mechanisms",
+  "subsections_expected": 4,
+  "subsections_written": ["### 3.1 Architecture", "### 3.2 Training", "### 3.3 Evaluation", "### 3.4 Limitations"],
+  "citations_count": 12,
+  "summary": "Wrote 4 subsections with 12 inline citations. Section 3.4 had limited evidence."
+}
+```
+
+When not all subsections could be written, use `"status": "needs_action"`:
+
 ```json
 {
   "status": "needs_action",
   "chapter": "## 3. Core Mechanisms",
   "subsections_expected": 4,
   "subsections_written": ["### 3.1 Architecture", "### 3.2 Training"],
+  "citations_count": 6,
   "summary": "Wrote 2 of 4 subsections. Insufficient evidence for 3.3, 3.4."
 }
 ```
-
-## Editor return contract
-```json
-{
-  "chapter": "## 3. Core Mechanisms",
-  "status": "done",
-  "enrichments_made": 5,
-  "citations_added": 3,
-  "issues": [],
-  "summary": "Enriched 5 claims, added 3 citations."
-}
-```
-When issues found, `status` is `"needs_action"` and `issues` contains specific problems.
 
 ## Synthesizer return contract
 ```json
@@ -78,7 +82,7 @@ When issues found, `status` is `"needs_action"` and `issues` contains specific p
 }
 ```
 
-When actionable issues are found (`contradiction` or `forward_ref`), `status` is `"needs_action"`. When only non-actionable issues are found (`gap` or `alignment`), `status` is `"done"`. The `issues` array is populated in both cases:
+When actionable issues are found (`contradiction`), `status` is `"needs_action"`. When only non-actionable issues are found (`gap` or `alignment`), `status` is `"done"`. The `issues` array is populated in both cases:
 
 ```json
 {
@@ -104,7 +108,6 @@ Issue types and `chapters_affected` semantics:
 | `contradiction` | The two or more chapters in conflict |
 | `gap` | Empty list — no chapter covers the missing topic |
 | `alignment` | Empty list — whole-document concern, not localized |
-| `forward_ref` | The chapter containing the dangling reference |
 
 ## Blocked return contract (all subagents)
 
@@ -128,4 +131,4 @@ Any subagent may return a blocked status instead of its normal contract:
 
 ## Iteration cap
 
-Maximum 15 evaluate tasks. If `iteration >= 15`, force-proceed to writing regardless of `research_complete`.
+Maximum 10 evaluate tasks. If `iteration >= 10`, force-proceed to writing regardless of `research_complete`.
