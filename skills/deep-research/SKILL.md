@@ -33,11 +33,11 @@ Default model assignments for subagent dispatches. The director uses the session
 2. Construct the full prompt: prompt file content + `\n---\nTASK:\n` + JSON assignment
 3. Call `Agent(prompt=<full prompt>, model=<model from MODEL_CONFIG>, description=<short description>)`
 
-Each subagent returns structured JSON. You read the return, update `workflow_state.json`, and decide the next action.
+Each subagent returns structured JSON. You write the full return to `workflow_state.json` via atomic Bash, and decide the next action based on routing fields.
 
 **You call these tools directly** (not via subagents):
-- `Read` / `Write` -- to manage `workflow_state.json`, `outline.md`, and report title
-- `Bash` -- to perform atomic report assembly (`mv report.md.tmp report.md`)
+- `Bash` -- to write subagent results to `workflow_state.json` (atomic disk write pattern, §2) and to perform atomic report assembly
+- `Read` / `Write` / `Edit` -- to manage `outline.md`, report title, and other workspace files
 - `Glob` -- to discover workspace state during crash recovery
 - `Grep` -- lightweight verification of subagent work
 
