@@ -83,7 +83,7 @@ def compute_convergence(state: dict) -> dict:
             "actionable_gaps_remain": False,
             "known_unfillable_gaps": all_gaps,
             "forced_completion": True,
-            "reason": "Iteration cap reached (>= 15)",
+            "reason": "Iteration cap reached (>= 10)",
         }
 
     # Always walk consecutive eval pairs to find unfillable gaps.
