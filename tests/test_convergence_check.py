@@ -143,11 +143,11 @@ def test_all_gaps_unfillable_forces_completion():
 
 
 def test_iteration_cap_forces_completion():
-    """At iteration >= 15, forced completion regardless of gaps."""
+    """At iteration >= 10, forced completion regardless of gaps."""
     state = {
         "workflow_id": "test-5",
         "tasks": [
-            make_eval_task(15, {"Benchmarks": "No data"}),
+            make_eval_task(10, {"Benchmarks": "No data"}),
         ],
     }
     out = run_script(state)

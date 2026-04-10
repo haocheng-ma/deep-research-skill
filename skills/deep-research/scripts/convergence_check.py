@@ -77,7 +77,7 @@ def compute_convergence(state: dict) -> dict:
     latest_iteration = latest_eval.get("iteration", 1)
 
     # Iteration cap check
-    if latest_iteration >= 15:
+    if latest_iteration >= 10:
         all_gaps = list(latest_result.get("section_gaps", {}).keys())
         return {
             "actionable_gaps_remain": False,
