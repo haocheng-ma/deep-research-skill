@@ -336,38 +336,37 @@ No `Read workflow_state.json`, `Read outline.md`, or `Read source_index.json` be
 
 ### 4.3 Dispatching `write` tasks
 
-**Construct the dispatch:**
-1. Read `${CLAUDE_SKILL_DIR}/writer.md`
-2. Read `{workspace}/outline.md` and extract the subsection source annotations for this chapter
-3. Read `{workspace}/source_index.json` and build:
-   - `source_files`: list of `{workspace}/sources/{id}.md` paths for source IDs annotated on this chapter's subsections
-   - `source_metadata`: object mapping each source ID to `{title, url}` from `page_info`
-4. Dispatch:
+**Construct all writer dispatches at writing phase entry:**
+1. Read `${CLAUDE_SKILL_DIR}/writer.md` (once — do not re-read per writer)
+2. Read `{workspace}/outline.md` (once)
+3. Read `{workspace}/source_index.json` (once)
+4. For each `##` chapter (excluding Introduction and Conclusion):
+   a. Extract subsection source annotations for this chapter from the outline
+   b. Build `source_files` and `source_metadata` from `source_index.json`
+   c. Dispatch:
    ```
    Agent(
      prompt=<writer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
        "chapter": "## 3. Core Mechanisms",
        "report_path": "{outputs}/chapter-3.md",
-       "language": "<language from workflow_state.json>",
+       "language": "<language from initial workflow_state.json creation>",
        "workspace": "<workspace path>",
        "outputs": "<outputs path>",
-       "source_files": ["{workspace}/sources/2.md", "{workspace}/sources/5.md", "{workspace}/sources/9.md"],
-       "source_metadata": {
-         "2": {"title": "Source Title", "url": "https://example.com/2"},
-         "5": {"title": "Another Source", "url": "https://example.com/5"},
-         "9": {"title": "Third Source", "url": "https://example.com/9"}
-       }
+       "source_files": ["{workspace}/sources/2.md", "{workspace}/sources/5.md"],
+       "source_metadata": {"2": {"title": "...", "url": "..."}, "5": {"title": "...", "url": "..."}}
      }),
      model="sonnet",
      description="write chapter: Core Mechanisms"
    )
    ```
 
-Each writer writes to its own chapter file (`chapter-1.md`, `chapter-2.md`, etc.) so parallel writers don't conflict.
+Dispatch all writers in a single message (parallel execution). Each writer writes to its own chapter file so parallel writers don't conflict.
 
 **On return -- check for partial writes:**
 Compare `subsections_expected` against `len(subsections_written)`. If they differ, log the gap but do NOT create a re-write task. One pass per chapter.
+
+Write each writer result to disk via the atomic Bash write pattern (§2).
 
 ### 4.5 Creating writing-phase tasks
 
