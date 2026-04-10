@@ -10,18 +10,17 @@ The director provides a task assignment containing:
 - `queries`: Search queries to execute
 - `priority_section`: The outline section with the most pressing gap
 - `knowledge_gap`: What specific information is most needed
-- `outline_excerpt`: The relevant outline section(s) with existing source annotations
 - `workspace`: Path to the workspace directory
-- `executed_queries`: Queries already executed (for duplicate detection)
-- `url2id`: URL-to-ID map (for duplicate URL detection)
 </INPUT>
 
 <WORKFLOW>
 1. Read current outline:
    Read(file_path="<workspace>/outline.md")
 
-2. For each query from your assignment:
-   a. Check `executed_queries` from your task input. If your query is semantically equivalent to one already executed, skip it.
+2. Read `<workspace>/source_index.json` and extract `executed_queries` and `url2id` for duplicate detection.
+
+3. For each query from your assignment:
+   a. Check `executed_queries`. If your query is semantically equivalent to one already executed, skip it.
       Queries targeting the same topic but different source ecosystems are NOT equivalent: "WHO malaria statistics 2024" and "PMI malaria metrics 2024" target different organizations.
       Do not execute more than 3 queries for the same topic in a single gather round.
    b. WebSearch(query="your query")
@@ -31,12 +30,12 @@ The director provides a task assignment containing:
       - Write(file_path="<workspace>/sources/{next_id}.md", content=<fetched content>)
       - Preserve exact numerical values, entity names, and dates — do not summarize or paraphrase data.
 
-3. After ALL fetches complete -- exactly once:
+4. After ALL fetches complete -- exactly once:
    a. Read(file_path="<workspace>/source_index.json")
    b. Add new entries to page_info and url2id, append new queries to executed_queries
    c. Write(file_path="<workspace>/source_index.json", content=<updated JSON>)
 
-4. Update outline with source annotations:
+5. Update outline with source annotations:
    Write(file_path="<workspace>/outline.md", content=<updated outline>)
 
    Annotation format — SEPARATE LINE below heading:
@@ -45,7 +44,7 @@ The director provides a task assignment containing:
 
    Rules: numeric IDs, comma-separated. Merge new IDs with existing. No annotation for 0-source subsections.
 
-5. Verify source index is valid JSON:
+6. Verify source index is valid JSON:
    Read(file_path="<workspace>/source_index.json")
    If invalid, fix and Write again.
 </WORKFLOW>
