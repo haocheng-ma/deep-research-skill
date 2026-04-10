@@ -79,7 +79,9 @@ All subsequent paths in this document use `{workspace}` and `{outputs}` as short
 ### State Contract
 
 ```
-STORE SUBAGENT RETURNS VERBATIM. NO SUMMARIZING, NO KEY RENAMING, NO FIELD OMISSION.
+STORE SUBAGENT RETURNS VERBATIM TO DISK.
+Write the full result to workflow_state.json via atomic Bash.
+The director's conversation context retains only routing fields.
 ```
 
 **Result schema reference:**
@@ -93,7 +95,37 @@ After a subagent returns, copy its entire JSON return into the task's `result` f
 | `write` | `status`, `chapter`, `subsections_expected`, `subsections_written`, `citations_count`, `summary` | writer.md output schema |
 | `synthesize` | `intro_written`, `conclusion_written`, `status`, `issues`, `summary` | synthesizer.md output schema |
 
-The Iron Law prohibits the director from dropping fields that the subagent returned. This table helps detect when a subagent's return is itself incomplete — in that case, store the incomplete return verbatim and log the missing fields.
+The Iron Law requires the full subagent return to reach disk. The director's conversation context keeps only routing fields — the minimum needed to decide the next action:
+
+| Subagent | Director keeps in context |
+|---|---|
+| Evaluator | `research_complete`, `suggested_queries`, `priority_section`, `knowledge_gap`, `section_gaps` count, `outline_evolution` |
+| Gatherer | `sources_added` count, one-line `summary` |
+| Writer | `subsections_expected` vs `subsections_written` count |
+| Synthesizer | `status`, `issues` list |
+
+### Atomic disk write pattern
+
+To write a subagent result to `workflow_state.json` without reading the file into context, use this Bash pattern. The director constructs the task JSON from the subagent return (already in context as the Agent tool result) and pipes it via heredoc:
+
+```bash
+python3 -c "
+import json, sys, tempfile, os
+task = json.load(sys.stdin)
+with open('{workspace}/workflow_state.json') as f: ws = json.load(f)
+for t in ws['tasks']:
+    if t['id'] == task['id']:
+        t.update(task)
+        break
+else:
+    ws['tasks'].append(task)
+with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
+    json.dump(ws, tmp, indent=2)
+os.replace(tmp.name, '{workspace}/workflow_state.json')
+" <<'TASK_EOF'
+<full task JSON including result>
+TASK_EOF
+```
 
 ---
 
@@ -126,13 +158,13 @@ Create `{workspace}/workflow_state.json`:
 
 ### Every turn
 
-1. Read `workflow_state.json` via `Read`
-2. Find next runnable task(s): all tasks where `status == "pending"` AND every task in `blocked_by` has `status == "completed"`
-3. Dispatch all runnable tasks via `Agent()` calls in a single message (parallel execution)
-4. After each subagent returns: update the task's `status` to `"completed"`, store the return JSON in `result`, set `completed_at`, and create any follow-up tasks
-5. Write updated state back via `Write`
+1. Dispatch the next task based on the routing fields already in context (from the previous subagent's return, or from initial state for eval-1)
+2. After each subagent returns: extract routing fields into context, then write the full result to `workflow_state.json` via the atomic Bash write pattern
+3. Decide the next action based on routing fields and convergence_check.py output
 
-**Turn economy:** Minimize your own tool calls per loop iteration. Read `workflow_state.json` once, dispatch all runnable tasks, process each return, then write state once. Do not read/write state between individual task dispatches.
+**Do NOT read `workflow_state.json` during normal operation.** The director writes to it (for disk persistence and crash recovery) but never reads it back. All decision-making uses routing fields already in the director's conversation context.
+
+Exception: crash recovery. If resuming a conversation and `workflow_state.json` already exists, read it once to determine the last completed task and continue.
 
 ### Crash recovery
 
