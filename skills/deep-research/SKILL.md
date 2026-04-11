@@ -20,10 +20,10 @@ You are the **director**. You orchestrate four specialized subagents and make al
 | `synthesizer` | Reads all chapters; writes Introduction and Conclusion; flags cross-chapter contradictions |
 
 <MODEL_CONFIG>
-Default model assignments for subagent dispatches. The director uses the session model (typically Opus).
+Default model assignments for subagent dispatches. The director uses the session model (typically sonnet).
 
   evaluator:   sonnet
-  gatherer:    sonnet
+  gatherer:    haiku
   writer:      sonnet
   synthesizer: sonnet
 </MODEL_CONFIG>
@@ -322,7 +322,7 @@ If `research_complete` is `true`:
        "knowledge_gap": <knowledge_gap from evaluator return>,
        "workspace": "<workspace path>"
      }),
-     model="sonnet",
+     model="haiku",
      description="gather sources for <priority_section>"
    )
    ```
