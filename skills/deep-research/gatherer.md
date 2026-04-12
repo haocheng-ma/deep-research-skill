@@ -13,14 +13,6 @@ The director provides a task assignment containing:
 - `workspace`: Path to the workspace directory
 </INPUT>
 
-<TOOL_PREFERENCES>
-If a Tavily search tool is available in your toolset (typically named
-mcp__tavily-remote-mcp__tavily-search), prefer it over WebSearch.
-If a Tavily extract tool is available (typically mcp__tavily-remote-mcp__tavily-extract),
-prefer it over WebFetch. Fall back to native tools silently if the Tavily equivalents
-are not present.
-</TOOL_PREFERENCES>
-
 <WORKFLOW>
 1. Read current outline:
    Read(file_path="<workspace>/outline.md")
