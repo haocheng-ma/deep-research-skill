@@ -223,14 +223,13 @@ This is the main control loop. Execute it on every turn after the outline is cre
 
 ```
 LOOP:
-  Read workflow_state.json
-  runnable = all pending tasks where every blocked_by task is completed
-  if no runnable tasks: DONE -- workflow complete
+  Determine the next action set from routing fields already in context
+    (in research phases this is one task; in writing phase it is the full writer batch)
+  if no next action: DONE -- workflow complete
 
-  For each runnable task:
-    dispatch based on task.type (see below)
-    update workflow_state.json after each dispatch returns
-
+  Dispatch the action set based on task.type (see below)
+  Extract routing fields from each subagent return into context
+  Write each full result to workflow_state.json (atomic pattern, §2)
   Go to LOOP
 ```
 
