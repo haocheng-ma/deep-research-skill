@@ -208,7 +208,7 @@ Before dispatching `eval-1`:
 ```
 eval-1 → gather-1 → eval-2 → gather-2 → ... → eval-N (research complete)
                                                    ↓
-                                    write-ch1, write-ch2, ..., write-chK  (parallel)
+                                    write-ch2, write-ch3, ..., write-chK  (parallel)
                                                    ↓
                                               synthesize-1
                                                    ↓
@@ -450,7 +450,7 @@ After the final synthesize task returns `"done"` (or the cap is reached):
      prompt=<synthesizer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
        "research_question": "<user's original query>",
        "language": "<language from conversation context>",
-       "chapter_files": ["{outputs}/chapter-1.md", "{outputs}/chapter-2.md", ...],
+       "chapter_files": ["{outputs}/chapter-2.md", "{outputs}/chapter-3.md", ...],
        "intro_path": "{outputs}/intro.md",
        "conclusion_path": "{outputs}/conclusion.md",
        "known_unfillable_gaps": ["Section Name 1"],
