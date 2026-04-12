@@ -340,6 +340,9 @@ No `Read workflow_state.json`, `Read outline.md`, or `Read source_index.json` be
 2. Read `{workspace}/outline.md` (once)
 3. Read `{workspace}/source_index.json` (once)
 4. For each `##` chapter (excluding Introduction and Conclusion):
+
+   **Numbering rule:** chapter file names and write-task IDs preserve outline chapter numbers. `## 3. Core Mechanisms` produces `write-ch3` and `chapter-3.md`. Introduction (ch1) and Conclusion are excluded from writer dispatch, so numbering starts at ch2.
+
    a. Extract subsection source annotations for this chapter from the outline
    b. Build `source_files` and `source_metadata` from `source_index.json`
    c. Dispatch:
