@@ -28,7 +28,7 @@ If output is `1`, skip clarifying questions and brief presentation. Write `brief
 - Known unknowns: "non-interactive run — no user clarification available."
 - Clarification log: empty.
 
-Then flip `brief.status = "approved"`, set `approved_at`, and proceed. No questions, no user prompt.
+Then flip `brief.status = "approved"` and set `approved_at` using the same atomic-write pattern shown in the Approval sequence below. Proceed to the pipeline — no questions, no user prompt.
 
 ## Asking clarifying questions
 

@@ -161,7 +161,14 @@ TASK_EOF
 
 ### First turn
 
-`{workspace}/workflow_state.json` is created at the end of workspace init (§1 step 6) with the schema above. The `tasks` array begins empty. After the clarification phase (§1.5) approves the brief, the director:
+`{workspace}/workflow_state.json` is created at the end of workspace init (§1 step 6) with the schema below. The `tasks` array begins empty. After the clarification phase (§1.5) approves the brief, the director:
+
+1. Creates `{workspace}/outline.md` (§3).
+2. Appends the first `eval-1` task to `workflow_state.tasks` via the atomic Bash write pattern (§2 "Atomic disk write pattern").
+
+Before clarification approval, the only `workflow_state.json` mutations are to the `brief` object (revisions, status flip).
+
+**Schema reference** — the shape of the initial file written in §1 step 6:
 
 ```json
 {
@@ -181,11 +188,6 @@ TASK_EOF
   "tasks": []
 }
 ```
-
-1. Creates `{workspace}/outline.md` (§3).
-2. Appends the first `eval-1` task to `workflow_state.tasks` via the atomic Bash write pattern (§2 "Atomic disk write pattern").
-
-Before clarification approval, the only `workflow_state.json` mutations are to the `brief` object (revisions, status flip).
 
 ### Every turn
 
