@@ -304,6 +304,7 @@ LOOP:
        "research_question": "<user's original query>",
        "iteration": <N>,
        "workspace": "<workspace path>",
+       "brief_path": "<workspace>/brief.md",
        "known_unfillable_gaps": <from convergence_check.py output>
      }),
      model="sonnet",
@@ -415,6 +416,7 @@ No `Read workflow_state.json`, `Read outline.md`, or `Read source_index.json` be
        "language": "<language from initial workflow_state.json creation>",
        "workspace": "<workspace path>",
        "outputs": "<outputs path>",
+       "brief_path": "<workspace>/brief.md",
        "source_files": ["{workspace}/sources/2.md", "{workspace}/sources/5.md"],
        "source_metadata": {"2": {"title": "...", "url": "..."}, "5": {"title": "...", "url": "..."}}
      }),
