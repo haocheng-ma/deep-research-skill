@@ -53,16 +53,7 @@ Before any research begins:
    ```
    Bash(command="mkdir -p .deep-research/{slug}/workspace/sources .deep-research/{slug}/outputs")
    ```
-4. Check if `.deep-research/` is gitignored:
-   ```
-   Bash(command="git check-ignore -q .deep-research 2>/dev/null")
-   ```
-   If exit code is non-zero (not ignored), add it:
-   ```
-   Bash(command="echo '.deep-research/' >> .gitignore")
-   ```
-
-5. **Verify convergence script:**
+4. **Verify convergence script:**
    Resolve the script path relative to the skill directory:
    ```
    Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py --help 2>&1 || echo SCRIPT_NOT_FOUND")
@@ -70,7 +61,7 @@ Before any research begins:
    - If the output contains `SCRIPT_NOT_FOUND` or exits non-zero: **STOP. Report the error to the user. Do not proceed to outline creation.**
    - If successful: store the resolved absolute path in `workflow_state.json` as `"convergence_script"`.
 
-6. **Confirm workspace is operational** before creating the outline or dispatching any subagent.
+5. **Confirm workspace is operational** before creating the outline or dispatching any subagent.
 
 All subsequent paths in this document use `{workspace}` and `{outputs}` as shorthand for the full paths established here. Workspace and output paths are passed to subagents via the task JSON, not via placeholder substitution in prompts.
 

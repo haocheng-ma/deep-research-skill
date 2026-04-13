@@ -55,11 +55,10 @@ Research artifacts are stored in `.deep-research/<topic-slug>/`:
         └── report.md              # Final report
 ```
 
-The `.deep-research/` directory is automatically gitignored.
-
 ## Requirements
 
 - Claude Code with Agent, WebSearch, and WebFetch tools available
+- Ensure `.deep-research/` is gitignored in your repo (the skill writes large scratch artifacts there)
 
 ## Roadmap
 
