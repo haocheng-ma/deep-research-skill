@@ -59,11 +59,50 @@ Before any research begins:
    Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py --help 2>&1 || echo SCRIPT_NOT_FOUND")
    ```
    - If the output contains `SCRIPT_NOT_FOUND` or exits non-zero: **STOP. Report the error to the user. Do not proceed to outline creation.**
-   - If successful: store the resolved absolute path in `workflow_state.json` as `"convergence_script"`.
+   - If successful: remember the resolved absolute path — it will be written into `workflow_state.json` at step 6 below.
 
 5. **Confirm workspace is operational** before creating the outline or dispatching any subagent.
 
+6. **Create initial `workflow_state.json`** with the `brief` object in draft status and an empty `tasks` array:
+   ```bash
+   python3 -c "
+   import json, tempfile, os, datetime
+   ws = {
+     'workflow_id': '<topic-slug>-<timestamp>',
+     'created_at': datetime.datetime.utcnow().isoformat() + 'Z',
+     'research_question': '<user raw query>',
+     'language': '<detected language>',
+     'convergence_script': '<absolute path from step 4>',
+     'known_unfillable_gaps': [],
+     'brief': {
+       'status': 'draft',
+       'path': '{workspace}/brief.md',
+       'approved_at': None,
+       'revision_count': 0,
+       'revision_cap_overridden': False
+     },
+     'tasks': []
+   }
+   with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
+     json.dump(ws, tmp, indent=2)
+   os.replace(tmp.name, '{workspace}/workflow_state.json')
+   "
+   ```
+   The `tasks` array is empty — `eval-1` is only appended after brief approval.
+
+7. **Run the clarification phase** before creating `outline.md` or appending any task. Read `${CLAUDE_SKILL_DIR}/references/clarification.md` and follow it. Clarification produces `brief.md` and flips `workflow_state.brief.status` to `"approved"`. Do not proceed past this step until approved.
+
 All subsequent paths in this document use `{workspace}` and `{outputs}` as shorthand for the full paths established here. Workspace and output paths are passed to subagents via the task JSON, not via placeholder substitution in prompts.
+
+## 1.5 Clarification Phase (HARD GATE)
+
+Before any research subagent is dispatched, the director runs a clarification phase to produce and get user approval on a written research brief at `{workspace}/brief.md`.
+
+**HARD GATE:** No `evaluate`, `gather`, or `write` task may be appended to `workflow_state.tasks` until `workflow_state.brief.status == "approved"`.
+
+Read `${CLAUDE_SKILL_DIR}/references/clarification.md` for the full phase contents: when to ask clarifying questions, the brief template, revision protocol, approval sequence, and non-interactive bypass. The phase runs inline in the director — no subagent dispatch.
+
+On crash recovery: if `workflow_state.brief.status != "approved"`, re-enter this phase with the existing `brief.md` as the starting draft. If already approved, skip this phase entirely and resume the pipeline.
 
 ## 2. Workflow State Management
 
@@ -122,7 +161,7 @@ TASK_EOF
 
 ### First turn
 
-Create `{workspace}/workflow_state.json`:
+`{workspace}/workflow_state.json` is created at the end of workspace init (§1 step 6) with the schema above. The `tasks` array begins empty. After the clarification phase (§1.5) approves the brief, the director:
 
 ```json
 {
@@ -130,22 +169,23 @@ Create `{workspace}/workflow_state.json`:
   "created_at": "<ISO-8601>",
   "research_question": "<user's original query>",
   "language": "<detected language>",
-  "convergence_script": "<absolute path, set during workspace init step 5>",
+  "convergence_script": "<absolute path, set during workspace init step 4>",
   "known_unfillable_gaps": [],
-  "tasks": [
-    {
-      "id": "eval-1",
-      "type": "evaluate",
-      "status": "pending",
-      "blocked_by": [],
-      "iteration": 1,
-      "result": null,
-      "started_at": null,
-      "completed_at": null
-    }
-  ]
+  "brief": {
+    "status": "draft",
+    "path": "{workspace}/brief.md",
+    "approved_at": null,
+    "revision_count": 0,
+    "revision_cap_overridden": false
+  },
+  "tasks": []
 }
 ```
+
+1. Creates `{workspace}/outline.md` (§3).
+2. Appends the first `eval-1` task to `workflow_state.tasks` via the atomic Bash write pattern (§2 "Atomic disk write pattern").
+
+Before clarification approval, the only `workflow_state.json` mutations are to the `brief` object (revisions, status flip).
 
 ### Every turn
 
@@ -159,7 +199,14 @@ Exception: crash recovery. If resuming a conversation and `workflow_state.json` 
 
 ### Crash recovery
 
-If you resume a conversation and `workflow_state.json` already exists, read it and continue from the next runnable task. All prior subagent results are in the `result` fields -- you do not need conversation history.
+If you resume a conversation and `workflow_state.json` already exists, read it once to determine the current phase:
+
+- If `brief.status == "draft"` (or `brief` object is missing): re-enter the clarification phase (§1.5) with the existing `brief.md` as the starting draft.
+- If `brief.status == "approved"` and `{workspace}/outline.md` exists and `tasks` is non-empty: resume the pipeline from the next runnable task using the existing task chain. If the user re-invoked the skill with a *different* raw query, ignore the new query — the approved brief is authoritative. The user must delete `.deep-research/{slug}/` to start fresh.
+- If `brief.status == "approved"` but `outline.md` is missing *or* `tasks` is empty: the process died after approval but before outline creation or first task append. Resume at outline creation (§3), which will then append `eval-1`.
+- If `brief.md` contains `## Approved` but `workflow_state.brief.status == "draft"`: the process died between the two approval writes. Treat as draft (workflow_state is authoritative), log a warning to the user, and re-prompt for approval.
+
+All prior subagent results are in the `result` fields of completed tasks — you do not need conversation history.
 
 ## 3. Outline Creation
 
@@ -186,6 +233,28 @@ Before dispatching `eval-1`:
    ```
    Write(file_path="{workspace}/source_index.json", content='{"page_info": {}, "url2id": {}, "executed_queries": []}')
    ```
+6. **Append the first `eval-1` task to `workflow_state.tasks`** via the atomic Bash write pattern (§2):
+   ```bash
+   python3 -c "
+   import json, tempfile, os
+   task = {
+     'id': 'eval-1',
+     'type': 'evaluate',
+     'status': 'pending',
+     'blocked_by': [],
+     'iteration': 1,
+     'result': None,
+     'started_at': None,
+     'completed_at': None
+   }
+   with open('{workspace}/workflow_state.json') as f: ws = json.load(f)
+   ws['tasks'].append(task)
+   with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
+       json.dump(ws, tmp, indent=2)
+   os.replace(tmp.name, '{workspace}/workflow_state.json')
+   "
+   ```
+   This is the first mutation of `tasks[]` in the workflow. The HARD GATE from §1.5 forbids any earlier task append.
 
 **Outline rules:**
 - `[sources: ID, ...]` annotations go on their own line below the subsection heading, never in the heading itself
