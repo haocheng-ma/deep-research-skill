@@ -1,8 +1,8 @@
 # Deep Research Plugin for Claude Code
 
-It starts from the moment you ask a research question. Instead of a quick summary, the Director analyzes your question and builds a research outline — chapters, subsections, the shape of what a thorough answer would actually look like.
+It starts from the moment you ask a research question. The Director asks a few clarifying questions — scope, audience, depth — and drafts a research brief for your approval. Once you approve, it builds a research outline from the brief and the loop begins.
 
-Then the research loop begins. An Evaluator reads the outline and scores what's covered. Where gaps exist, a Gatherer goes to work: searching the web, fetching pages, storing sources, annotating the outline. The loop runs until the evidence is solid — or the iteration cap is reached.
+An Evaluator reads the outline and scores what's covered. Where gaps exist, a Gatherer goes to work: searching the web, fetching pages, storing sources, annotating the outline. The loop runs until the evidence is solid — or the iteration cap is reached.
 
 Once research converges, Writers tackle every chapter in parallel. Each one uses the CECI pattern — Claim, Evidence, Comparison, Implication — writing with inline citations drawn directly from the gathered sources. When the chapters are done, a Synthesizer reads them all together, writes the Introduction and Conclusion, and catches any cross-chapter contradictions before final assembly.
 
@@ -31,13 +31,14 @@ Or just ask a research question — Claude will invoke the skill automatically w
 
 ## How It Works
 
-1. **Director** — analyzes your question and builds a research outline: chapters, subsections, the shape of a thorough answer
-2. **Evaluator** — scores the outline against gathered evidence; identifies gaps and suggests follow-up queries
-3. **Gatherer** — executes searches, fetches pages, annotates the outline with source IDs
-4. **Writer** — writes each chapter in parallel using the CECI pattern (Claim → Evidence → Comparison → Implication) with inline citations drawn from gathered sources
-5. **Synthesizer** — reads all chapters together; writes Introduction and Conclusion; checks for cross-chapter contradictions
+1. **Director** — asks clarifying questions, drafts a research brief, and gets your approval before committing to a research run
+2. **Director** — builds a research outline from the approved brief: chapters, subsections, the shape of a thorough answer
+3. **Evaluator** — scores the outline against gathered evidence; identifies gaps and suggests follow-up queries
+4. **Gatherer** — executes searches, fetches pages, annotates the outline with source IDs
+5. **Writer** — writes each chapter in parallel using the CECI pattern (Claim, Evidence, Comparison, Implication) with inline citations drawn from gathered sources
+6. **Synthesizer** — reads all chapters together; writes Introduction and Conclusion; checks for cross-chapter contradictions
 
-The evaluate→gather loop (steps 2–3) runs until evidence is sufficient or the iteration cap (10) is reached. Writing (step 4) parallelizes all chapters at once.
+The clarification phase (step 1) produces a brief that anchors scope, audience, and constraints for the entire run. The evaluate-gather loop (steps 3-4) runs until evidence is sufficient or the iteration cap (10) is reached. Writing (step 5) parallelizes all chapters at once.
 
 ## Output
 
@@ -47,12 +48,17 @@ Research artifacts are stored in `.deep-research/<topic-slug>/`:
 .deep-research/
 └── sovereign-wealth-funds/
     ├── workspace/
-    │   ├── outline.md              # Research outline
-    │   ├── source_index.json       # Source metadata
-    │   ├── workflow_state.json     # Execution state
-    │   └── sources/                # Raw fetched content
+    │   ├── brief.md                # Approved research brief
+    │   ├── outline.md              # Research outline with source annotations
+    │   ├── source_index.json       # Source metadata and query history
+    │   ├── workflow_state.json     # Execution state (tasks, brief status)
+    │   └── sources/                # Raw fetched content (1.md, 2.md, ...)
     └── outputs/
-        └── report.md              # Final report
+        ├── intro.md               # Introduction (written by synthesizer)
+        ├── chapter-2.md, ...      # Chapter files (written by writers)
+        ├── conclusion.md          # Conclusion (written by synthesizer)
+        ├── references.md          # Sources consulted
+        └── report.md              # Final assembled report
 ```
 
 ## Requirements
@@ -64,7 +70,6 @@ Research artifacts are stored in `.deep-research/<topic-slug>/`:
 
 - [ ] **Behavioral testing** — Validate director orchestration and subagent compliance under pressure scenarios (e.g., false completion, partial drafts, convergence stalls).
 - [ ] **Multilingual reports** — Reports are currently English-only. Add language detection so the report output matches the user's query language. Initial implementation searches in English only; which language to search in — and whether to search in both languages — needs validation through testing and user feedback.
-- [ ] **Research clarification step** — Before starting research, the director could ask the user clarifying questions (e.g., scope, preferred angle, language when ambiguous). Currently the director proceeds directly from query to outline.
 
 ## License
 

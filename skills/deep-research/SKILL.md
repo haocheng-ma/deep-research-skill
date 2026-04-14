@@ -6,7 +6,9 @@ argument-hint: "<research topic>"
 
 # Deep Research
 
-## 1. Role and Workspace
+**End-to-end flow:** Workspace init → Clarification → Outline creation → Research loop (evaluate-gather cycles) → Writing (parallel chapters) → Synthesis → Assembly.
+
+## 1. Role and Tools
 
 You are the **director**. You orchestrate four specialized subagents and make all strategic decisions. You never search the web, fetch pages, store sources, or write report prose.
 
@@ -33,15 +35,15 @@ Default model assignments for subagent dispatches. The director uses the session
 2. Construct the full prompt: prompt file content + `\n---\nTASK:\n` + JSON assignment
 3. Call `Agent(prompt=<full prompt>, model=<model from MODEL_CONFIG>, description=<short description>)`
 
-Each subagent returns structured JSON. You write the full return to `workflow_state.json` via atomic Bash, and decide the next action based on routing fields.
+Each subagent returns structured JSON. You write the full return to `workflow_state.json` via atomic Bash (§4), and decide the next action based on routing fields.
 
 **You call these tools directly** (not via subagents):
-- `Bash` -- to write subagent results to `workflow_state.json` (atomic disk write pattern, §2) and to perform atomic report assembly
+- `Bash` -- to write subagent results to `workflow_state.json` (atomic disk write pattern, §4) and to perform atomic report assembly
 - `Read` / `Write` / `Edit` -- to manage `outline.md`, report title, and other workspace files
 - `Glob` -- to discover workspace state during crash recovery
 - `Grep` -- lightweight verification of subagent work
 
-### Workspace Initialization
+## 2. Workspace Initialization
 
 Before any research begins:
 
@@ -58,7 +60,7 @@ Before any research begins:
    ```
    Bash(command="python3 ${CLAUDE_SKILL_DIR}/scripts/convergence_check.py --help 2>&1 || echo SCRIPT_NOT_FOUND")
    ```
-   - If the output contains `SCRIPT_NOT_FOUND` or exits non-zero: **STOP. Report the error to the user. Do not proceed to outline creation.**
+   - If the output contains `SCRIPT_NOT_FOUND` or exits non-zero: **STOP. Report the error to the user. Do not proceed.**
    - If successful: remember the resolved absolute path — it will be written into `workflow_state.json` at step 6 below.
 
 5. **Confirm workspace is operational** before creating the outline or dispatching any subagent.
@@ -94,7 +96,7 @@ Before any research begins:
 
 All subsequent paths in this document use `{workspace}` and `{outputs}` as shorthand for the full paths established here. Workspace and output paths are passed to subagents via the task JSON, not via placeholder substitution in prompts.
 
-## 1.5 Clarification Phase (HARD GATE)
+## 3. Clarification Phase (HARD GATE)
 
 Before any research subagent is dispatched, the director runs a clarification phase to produce and get user approval on a written research brief at `{workspace}/brief.md`.
 
@@ -104,7 +106,7 @@ Read `${CLAUDE_SKILL_DIR}/references/clarification.md` for the full phase conten
 
 On crash recovery: if `workflow_state.brief.status != "approved"`, re-enter this phase with the existing `brief.md` as the starting draft. If already approved, skip this phase entirely and resume the pipeline.
 
-## 2. Workflow State Management
+## 4. Workflow State Management
 
 ### State Contract
 
@@ -114,18 +116,9 @@ Write the full result to workflow_state.json via atomic Bash.
 The director's conversation context retains only routing fields.
 ```
 
-**Result schema reference:**
+For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
 
-After a subagent returns, copy its entire JSON return into the task's `result` field. The following table lists the required fields per task type. If the return contains all listed fields, the state is correct. If any field is missing, the subagent returned a malformed response — log the discrepancy but store what was returned; do not invent missing fields.
-
-| Task type | Required `result` fields | Source |
-|---|---|---|
-| `evaluate` | `status`, `research_complete`, `section_gaps`, `suggested_queries`, `priority_section`, `knowledge_gap`, `outline_evolution`, `summary` | evaluator.md output schema |
-| `gather` | `status`, `sources_added` (array of `{id, title, section}`), `summary` | gatherer.md output schema |
-| `write` | `status`, `chapter`, `subsections_expected`, `subsections_written`, `citations_count`, `summary` | writer.md output schema |
-| `synthesize` | `intro_written`, `conclusion_written`, `status`, `issues`, `summary` | synthesizer.md output schema |
-
-The Iron Law requires the full subagent return to reach disk. The director's conversation context keeps only routing fields — the minimum needed to decide the next action:
+The director's conversation context keeps only routing fields — the minimum needed to decide the next action:
 
 | Subagent | Director keeps in context |
 |---|---|
@@ -157,43 +150,9 @@ os.replace(tmp.name, '{workspace}/workflow_state.json')
 TASK_EOF
 ```
 
----
+When appending multiple tasks at once (e.g., writing-phase task creation), pass a JSON array via stdin and use `ws['tasks'].extend(json.load(sys.stdin))` instead.
 
-### First turn
-
-`{workspace}/workflow_state.json` is created at the end of workspace init (§1 step 6) with the schema below. The `tasks` array begins empty. After the clarification phase (§1.5) approves the brief, the director:
-
-1. Creates `{workspace}/outline.md` (§3).
-2. Appends the first `eval-1` task to `workflow_state.tasks` via the atomic Bash write pattern (§2 "Atomic disk write pattern").
-
-Before clarification approval, the only `workflow_state.json` mutations are to the `brief` object (revisions, status flip).
-
-**Schema reference** — the shape of the initial file written in §1 step 6:
-
-```json
-{
-  "workflow_id": "<topic-slug>-<timestamp>",
-  "created_at": "<ISO-8601>",
-  "research_question": "<user's original query>",
-  "language": "<detected language>",
-  "convergence_script": "<absolute path, set during workspace init step 4>",
-  "known_unfillable_gaps": [],
-  "brief": {
-    "status": "draft",
-    "path": "{workspace}/brief.md",
-    "approved_at": null,
-    "revision_count": 0,
-    "revision_cap_overridden": false
-  },
-  "tasks": []
-}
-```
-
-### Every turn
-
-1. Dispatch the next task based on the routing fields already in context (from the previous subagent's return, or from initial state for eval-1)
-2. After each subagent returns: extract routing fields into context, then write the full result to `workflow_state.json` via the atomic Bash write pattern
-3. Decide the next action based on routing fields and convergence_check.py output
+### Read discipline
 
 **Do NOT read `workflow_state.json` during normal operation.** The director writes to it (for disk persistence and crash recovery) but never reads it back. All decision-making uses routing fields already in the director's conversation context.
 
@@ -203,20 +162,20 @@ Exception: crash recovery. If resuming a conversation and `workflow_state.json` 
 
 If you resume a conversation and `workflow_state.json` already exists, read it once to determine the current phase:
 
-- If `brief.status == "draft"` (or `brief` object is missing): re-enter the clarification phase (§1.5) with the existing `brief.md` as the starting draft.
+- If `brief.status == "draft"` (or `brief` object is missing): re-enter the clarification phase (§3) with the existing `brief.md` as the starting draft.
 - If `brief.status == "approved"` and `{workspace}/outline.md` exists and `tasks` is non-empty: resume the pipeline from the next runnable task using the existing task chain. If the user re-invoked the skill with a *different* raw query, ignore the new query — the approved brief is authoritative. The user must delete `.deep-research/{slug}/` to start fresh.
-- If `brief.status == "approved"` but `outline.md` is missing *or* `tasks` is empty: the process died after approval but before outline creation or first task append. Resume at outline creation (§3), which will then append `eval-1`.
+- If `brief.status == "approved"` but `outline.md` is missing *or* `tasks` is empty: the process died after approval but before outline creation or first task append. Resume at outline creation (§5), which will then append `eval-1`.
 - If `brief.md` contains `## Approved` but `workflow_state.brief.status == "draft"`: the process died between the two approval writes. Treat as draft (workflow_state is authoritative), log a warning to the user, and re-prompt for approval.
 
 All prior subagent results are in the `result` fields of completed tasks — you do not need conversation history.
 
-## 3. Outline Creation
+## 5. Outline Creation
 
-Before dispatching `eval-1`:
+After the clarification phase approves the brief:
 
-1. Analyze the user query to identify key dimensions and subtopics
+1. Read `{workspace}/brief.md`. Use the **Proposed outline** section as the starting structure for `outline.md`.
 2. Identify the language of the research question. If ambiguous or indeterminate, use `"English"`. Store as `language` in `workflow_state.json`.
-3. Create a hierarchical outline (up to 4 levels deep) with headings in the detected language, and persist:
+3. Expand the proposed headings into a hierarchical outline (up to 4 levels deep) with headings in the detected language, and persist:
    ```
    Write(file_path="{workspace}/outline.md", content=<outline>)
    ```
@@ -235,35 +194,18 @@ Before dispatching `eval-1`:
    ```
    Write(file_path="{workspace}/source_index.json", content='{"page_info": {}, "url2id": {}, "executed_queries": []}')
    ```
-6. **Append the first `eval-1` task to `workflow_state.tasks`** via the atomic Bash write pattern (§2):
-   ```bash
-   python3 -c "
-   import json, tempfile, os
-   task = {
-     'id': 'eval-1',
-     'type': 'evaluate',
-     'status': 'pending',
-     'blocked_by': [],
-     'iteration': 1,
-     'result': None,
-     'started_at': None,
-     'completed_at': None
-   }
-   with open('{workspace}/workflow_state.json') as f: ws = json.load(f)
-   ws['tasks'].append(task)
-   with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
-       json.dump(ws, tmp, indent=2)
-   os.replace(tmp.name, '{workspace}/workflow_state.json')
-   "
+6. **Append the first `eval-1` task** to `workflow_state.tasks` via the atomic Bash write pattern (§4):
+   ```json
+   {"id": "eval-1", "type": "evaluate", "status": "pending", "blocked_by": [], "iteration": 1, "result": null, "started_at": null, "completed_at": null}
    ```
-   This is the first mutation of `tasks[]` in the workflow. The HARD GATE from §1.5 forbids any earlier task append.
+   This is the first mutation of `tasks[]` in the workflow. The HARD GATE from §3 forbids any earlier task append.
 
 **Outline rules:**
 - `[sources: ID, ...]` annotations go on their own line below the subsection heading, never in the heading itself
 - Citation format in the report: `[citation:Title](URL)`
 - `[sources: ...]` lines are outline-only markers -- never include them in the final report
 
-## 4. Task Dispatch Rules (Core Loop)
+## 6. Research Loop
 
 ### Pipeline
 
@@ -291,11 +233,11 @@ LOOP:
 
   Dispatch the action set based on task.type (see below)
   Extract routing fields from each subagent return into context
-  Write each full result to workflow_state.json (atomic pattern, §2)
+  Write each full result to workflow_state.json (atomic pattern, §4)
   Go to LOOP
 ```
 
-### 4.1 Dispatching `evaluate` tasks
+### 6.1 Dispatching `evaluate` tasks
 
 **Construct the dispatch:**
 1. Read `${CLAUDE_SKILL_DIR}/evaluator.md`
@@ -320,7 +262,7 @@ No `Read workflow_state.json` before dispatch. The director tracks `iteration` (
 
 If `research_complete` is `false`:
 
-1. **Write evaluator result to disk** via the atomic Bash write pattern (§2). This MUST happen before the convergence check — the script reads from disk.
+1. **Write evaluator result to disk** via the atomic Bash write pattern (§4). This MUST happen before the convergence check — the script reads from disk.
    ```json
    {"id": "eval-<N>", "type": "evaluate", "status": "completed", "iteration": <N>, "result": <full evaluator return>, "completed_at": "<ISO-8601>"}
    ```
@@ -344,7 +286,7 @@ If `research_complete` is `false`:
    Do not assess convergence yourself. Do not skip this step.
 
    - If `actionable_gaps_remain` is `true`: create a gather task (step 4 below).
-   - If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` from the output into `workflow_state.json`.
+   - If `actionable_gaps_remain` is `false`: proceed to writing phase (§7). Store `known_unfillable_gaps` from the output into `workflow_state.json`.
    - If `forced_completion` is `true`: log the `reason` in `workflow_state.json`.
 
    **Script failure:** If the script exits non-zero, read stderr.
@@ -357,7 +299,7 @@ If `research_complete` is `false`:
 
 If `research_complete` is `true`:
 
-1. **Write evaluator result to disk** via the atomic Bash write pattern (§2). This MUST happen before the convergence check — the script reads from disk.
+1. **Write evaluator result to disk** via the atomic Bash write pattern (§4). This MUST happen before the convergence check — the script reads from disk.
    ```json
    {"id": "eval-<N>", "type": "evaluate", "status": "completed", "iteration": <N>, "result": <full evaluator return>, "completed_at": "<ISO-8601>"}
    ```
@@ -365,12 +307,12 @@ If `research_complete` is `true`:
    ```
    Bash(command="python3 <convergence_script> {workspace}/workflow_state.json")
    ```
-3. If `actionable_gaps_remain` is `false`: proceed to writing tasks (§4.5). Store `known_unfillable_gaps` in `workflow_state.json`.
+3. If `actionable_gaps_remain` is `false`: proceed to writing phase (§7). Store `known_unfillable_gaps` in `workflow_state.json`.
 4. If `actionable_gaps_remain` is `true`: treat as non-complete. Create a gather task.
 
-**Iteration cap:** If `iteration >= 10`, skip and force-proceed to writing tasks regardless of `research_complete`.
+**Iteration cap:** If `iteration >= 10`, skip and force-proceed to writing phase regardless of `research_complete`.
 
-### 4.2 Dispatching `gather` tasks
+### 6.2 Dispatching `gather` tasks
 
 **Construct the dispatch:**
 1. Read `${CLAUDE_SKILL_DIR}/gatherer.md`
@@ -393,10 +335,52 @@ No `Read workflow_state.json`, `Read outline.md`, or `Read source_index.json` be
 
 **On return:**
 1. Extract routing fields: `sources_added` count, one-line `summary`
-2. Write full result to disk via the atomic Bash write pattern (§2)
+2. Write full result to disk via the atomic Bash write pattern (§4)
 3. Create an eval task (`eval-<N+1>`, blocked by `gather-<N>`, iteration `<N+1>`)
 
-### 4.3 Dispatching `write` tasks
+## 7. Writing Phase
+
+When research completes (convergence_check.py returns `actionable_gaps_remain: false`), transition to the writing phase. For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
+
+Do NOT read `workflow_state.json` during the writing phase. The director tracks writer completions and synthesizer status in its conversation context.
+
+### 7.1 Creating writing-phase tasks
+
+Create all tasks in `workflow_state.json` before dispatching any writer.
+
+Let COMPLETION_TASK = the task ID that confirmed research completion (the eval task where convergence_check.py returned `actionable_gaps_remain: false`).
+
+Initialize the report title:
+```
+Write(file_path="{outputs}/report.md", content="# <title>\n")
+```
+
+Read `{workspace}/outline.md` once to get chapter structure. Create tasks for each `##` chapter (skip Introduction and Conclusion):
+```
+For each ## chapter:
+  - write-ch<N>:    type "write",       blocked_by: [COMPLETION_TASK]
+
+After all write tasks:
+  - synthesize-1:   type "synthesize",  blocked_by: ["write-ch2", "write-ch3", ..., "write-chK"]
+```
+
+Write all tasks to `workflow_state.json` via batch atomic Bash:
+
+```bash
+python3 -c "
+import json, sys, tempfile, os
+new_tasks = json.load(sys.stdin)
+with open('{workspace}/workflow_state.json') as f: ws = json.load(f)
+ws['tasks'].extend(new_tasks)
+with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
+    json.dump(ws, tmp, indent=2)
+os.replace(tmp.name, '{workspace}/workflow_state.json')
+" <<'TASKS_EOF'
+[{"id":"write-ch2","type":"write","status":"pending","blocked_by":["eval-5"],"result":null}, ...]
+TASKS_EOF
+```
+
+### 7.2 Dispatching writers
 
 **Construct all writer dispatches at writing phase entry:**
 1. Read `${CLAUDE_SKILL_DIR}/writer.md` (once — do not re-read per writer)
@@ -432,81 +416,11 @@ Dispatch all writers in a single message (parallel execution). Each writer write
 **On return -- check for partial writes:**
 Compare `subsections_expected` against `len(subsections_written)`. If they differ, log the gap but do NOT create a re-write task. One pass per chapter.
 
-Write each writer result to disk via the atomic Bash write pattern (§2).
+Write each writer result to disk via the atomic Bash write pattern (§4).
 
-### 4.5 Creating writing-phase tasks
+### 7.3 Dispatching synthesizer
 
-When research completes, read `{workspace}/outline.md` and create tasks for all chapters.
-For subagent return schemas, see `${CLAUDE_SKILL_DIR}/references/contracts.md`.
-
-**Step 1 — Create all writing-phase tasks in `workflow_state.json` before dispatching any.**
-
-Let COMPLETION_TASK = the task ID that confirmed research completion (the eval task where convergence_check.py returned `actionable_gaps_remain: false`).
-
-Initialize the report title:
-```
-Write(file_path="{outputs}/report.md", content="# <title>\n")
-```
-
-Create tasks for each `##` chapter (skip Introduction and Conclusion):
-```
-For each ## chapter:
-  - write-ch<N>:    type "write",       blocked_by: [COMPLETION_TASK]
-
-After all write tasks:
-  - synthesize-1:   type "synthesize",  blocked_by: ["write-ch2", "write-ch3", ..., "write-chK"]
-```
-
-Write all tasks to `workflow_state.json` via batch Bash pattern:
-
-```bash
-python3 -c "
-import json, sys, tempfile, os
-new_tasks = json.load(sys.stdin)
-with open('{workspace}/workflow_state.json') as f: ws = json.load(f)
-ws['tasks'].extend(new_tasks)
-with tempfile.NamedTemporaryFile('w', dir='{workspace}', suffix='.tmp', delete=False) as tmp:
-    json.dump(ws, tmp, indent=2)
-os.replace(tmp.name, '{workspace}/workflow_state.json')
-" <<'TASKS_EOF'
-[{"id":"write-ch2","type":"write","status":"pending","blocked_by":["eval-5"],"result":null}, ...]
-TASKS_EOF
-```
-
-**Step 2 — Dispatch writers and synthesizer procedurally.**
-
-All write tasks are immediately runnable (their only blocker is the eval task that just completed). The synthesizer is blocked by all write tasks.
-
-1. Dispatch all chapter writers in a single message (parallel execution, per §4.3)
-2. As each writer returns: extract subsection counts, write full result to disk via atomic Bash pattern
-3. After all writers return: dispatch synthesizer (per §4.6)
-4. On synthesizer return: handle status per §4.6, write result to disk via atomic Bash pattern
-5. If `needs_action` with contradictions: dispatch re-write tasks for affected chapters, then re-dispatch synthesizer (max 2 synthesize rounds)
-6. Proceed to assembly (Step 3)
-
-Do NOT read `workflow_state.json` in this loop. The director tracks writer completions and synthesizer status in its conversation context.
-
-**Step 3 — Assembly.**
-
-After the final synthesize task returns `"done"` (or the cap is reached):
-
-1. **Generate Sources Consulted section:**
-   a. Read `{workspace}/source_index.json`
-   b. If `page_info` has zero entries, skip and log. Do not fail assembly.
-   c. For each entry in `page_info`, ordered by numeric ID (integer sort):
-      format as: `[N] Title. URL`
-   d. Write to `{outputs}/references.md`
-
-2. **Assemble the report:**
-   a. Read `{outputs}/intro.md`, all chapter files in outline order, `{outputs}/conclusion.md`, and `{outputs}/references.md`
-   b. Concatenate in order: intro + chapters + conclusion + references
-   c. Write atomically:
-      ```
-      Write(file_path="{outputs}/report.md.tmp", content=<assembled report>)
-      Bash(command="mv {outputs}/report.md.tmp {outputs}/report.md")
-      ```
-
-### 4.6 Dispatching `synthesize` tasks
+After all writers return, dispatch the synthesizer.
 
 **Construct the dispatch:**
 1. Read `${CLAUDE_SKILL_DIR}/synthesizer.md`
@@ -532,13 +446,35 @@ After the final synthesize task returns `"done"` (or the cap is reached):
 Glob for `intro.md` and `conclusion.md` in `{outputs}`. If either missing: mark `"failed"`, create a fresh synthesize task, count against cap.
 
 **On return — handle `status`:**
-- `"done"`: proceed to assembly.
+- `"done"`: proceed to assembly (§8).
 - `"needs_action"` with `contradiction` issues: create re-write tasks for affected chapters with the contradiction description as context. Create new synthesize task blocked by those writes.
 - `gap` and `alignment` issues: accept without re-dispatch.
 
-**Cap:** max 2 synthesize rounds. After 2 rounds, accept and proceed to assembly.
+**Cap:** max 2 synthesize rounds. After 2 rounds, accept and proceed to assembly (§8).
 
-### 4.7 Presenting the report
+## 8. Assembly and Presentation
+
+After the final synthesize task returns `"done"` (or the cap is reached):
+
+### Assembly
+
+1. **Generate Sources Consulted section:**
+   a. Read `{workspace}/source_index.json`
+   b. If `page_info` has zero entries, skip and log. Do not fail assembly.
+   c. For each entry in `page_info`, ordered by numeric ID (integer sort):
+      format as: `[N] Title. URL`
+   d. Write to `{outputs}/references.md`
+
+2. **Assemble the report:**
+   a. Read `{outputs}/intro.md`, all chapter files in outline order, `{outputs}/conclusion.md`, and `{outputs}/references.md`
+   b. Concatenate in order: intro + chapters + conclusion + references
+   c. Write atomically:
+      ```
+      Write(file_path="{outputs}/report.md.tmp", content=<assembled report>)
+      Bash(command="mv {outputs}/report.md.tmp {outputs}/report.md")
+      ```
+
+### Presentation
 
 Tell the user the report is ready and print the absolute path to `{outputs}/report.md`. Do not read or output the report contents.
 
@@ -551,7 +487,7 @@ If the synthesize cap was reached and unresolved `contradiction` issues remain (
 
 Workflow complete.
 
-## 5. Error Handling
+## 9. Error Handling
 
 **Retry policy:**
 
@@ -573,7 +509,7 @@ When a task fails: mark `"failed"`, cascade to dependent tasks. Research tasks: 
 | Writer | Chapter file may contain partial content | Grep subsections, compare count against outline, re-dispatch same assignment |
 | Synthesizer | intro.md may exist without conclusion.md | Glob for both files, re-dispatch fresh synthesize task |
 
-## 6. Director Discipline
+## 10. Director Discipline
 
 ### Iron Law
 
@@ -587,4 +523,4 @@ NEVER write report chapter prose yourself. ALWAYS delegate to writer.
 | "The subsection count is close enough -- 3 of 4 is fine" | NO. Log the gap. Partial chapters produce incomplete reports. |
 | "The synthesizer's issues are minor — the chapter is good enough" | NO. `needs_action` means action. Create follow-up tasks per protocol. |
 | "The gatherer found nothing — no point running another eval" | NO. The evaluator determines whether a gap is unfillable, not you. Always create the next eval task. |
-| "The subagent returned blocked, but it's probably a transient issue" | NO. Evaluate recoverability per §5. Don't dismiss `blocked` without investigation. |
+| "The subagent returned blocked, but it's probably a transient issue" | NO. Evaluate recoverability per §9. Don't dismiss `blocked` without investigation. |

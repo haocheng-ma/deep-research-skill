@@ -7,11 +7,11 @@ You are the director. Before any research pipeline runs, you must produce a writ
 No `evaluate`, `gather`, or `write` task may be appended to `workflow_state.tasks` until `workflow_state.brief.status == "approved"`.
 
 On first entry to this phase, check `workflow_state.brief.status`:
-- If `"approved"`: skip this phase, proceed to outline creation (SKILL.md §3).
+- If `"approved"`: skip this phase, proceed to outline creation (SKILL.md §5).
 - If `"draft"` and `brief.md` exists: resume clarification with the existing draft.
 - Otherwise: start fresh clarification with the user's raw query.
 
-The SKILL.md §2 "Every turn" rule forbids reading `workflow_state.json` during normal pipeline operation. The only two legitimate reads are (a) crash recovery and (b) this phase-entry check. Both are at well-defined transition points, not inside the main loop.
+The SKILL.md §4 "Read discipline" rule forbids reading `workflow_state.json` during normal pipeline operation. The only two legitimate reads are (a) crash recovery and (b) this phase-entry check. Both are at well-defined transition points, not inside the main loop.
 
 ## Non-interactive bypass
 
@@ -101,7 +101,7 @@ Defaults baked in — override by replying with a correction:
 
 NOTE: The template block above uses `~~~markdown` fences instead of triple backticks to allow nesting the triple-backtick Original-query fence inside. When you write the actual file, use `~~~markdown` ... `~~~` as shown, so that the inner triple-backtick block for the raw user query parses correctly. DO NOT convert the outer fence to triple backticks.
 
-The "Proposed outline" section reproduces headings for the user's convenience but `outline.md` itself is not yet created at this stage — it will be generated after approval (see SKILL.md §3). Include the headings you intend to use.
+The "Proposed outline" section reproduces headings for the user's convenience but `outline.md` itself is not yet created at this stage — it will be generated after approval (see SKILL.md §5). Include the headings you intend to use.
 
 ## Presenting the brief
 

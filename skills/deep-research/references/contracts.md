@@ -1,6 +1,6 @@
 # Subagent Return Contracts
 
-Every subagent returns structured JSON as its final message. The director reads the return, updates `workflow_state.json`, and decides the next action. For dispatch protocols, see SKILL.md §4.
+Every subagent returns structured JSON as its final message. The director reads the return, updates `workflow_state.json`, and decides the next action. For dispatch protocols, see SKILL.md §6 (research loop) and §7 (writing phase).
 
 All dispatches include `research_question` as anchoring context in the task assignment.
 
@@ -12,7 +12,7 @@ Every subagent return includes a `status` field:
 |---|---|---|
 | `done` | Task completed. Follow the normal task DAG. | Read type-specific fields for follow-up task creation. |
 | `needs_action` | Task completed but corrective action needed beyond the normal DAG. | Read type-specific fields to scope follow-up tasks. |
-| `blocked` | Task could not complete. | Error handling per §5. |
+| `blocked` | Task could not complete. | Error handling per §9. |
 
 **Precedence rule:** The `status` field is a routing hint, not a bypass for verification gates. If the director's independent verification contradicts self-reported status (e.g., writer reports `done` but subsection count shows 3 of 4), the director treats the task as `needs_action` regardless of the reported status. Director verification always takes precedence over self-reported status.
 
