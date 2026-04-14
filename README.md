@@ -10,7 +10,11 @@ The result: a structured report with inline citations, saved to `.deep-research/
 
 ## Installation
 
-**From marketplace** — not yet published; use the local dev install below.
+**Install:**
+```
+/plugin marketplace add haocheng-ma/deep-research-skill
+/plugin install deep-research@deep-research-skill-dev
+```
 
 **For local development:**
 ```

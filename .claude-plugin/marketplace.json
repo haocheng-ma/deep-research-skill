@@ -1,0 +1,15 @@
+{
+  "name": "deep-research-skill-dev",
+  "description": "Development marketplace for deep-research plugin",
+  "owner": {
+    "name": "haocheng-ma"
+  },
+  "plugins": [
+    {
+      "name": "deep-research",
+      "description": "Use when the user asks for in-depth research on a topic that requires investigation across multiple angles — not a quick lookup or single-source answer",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}
