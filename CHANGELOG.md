@@ -2,6 +2,30 @@
 
 Implementation history grouped by feature, newest first.
 
+## 2026-04-14 — SKILL.md Restructure
+
+Restructures SKILL.md from topic-grouped sections to execution-order sections. The old layout had §4 doing too much (research loop, writing, synthesis, assembly all in one section) and writing-phase instructions scattered across §4.3, §4.5, and §4.6 in non-linear order.
+
+### What changed
+
+- **Section renumbering.** Old: §1 Role+Workspace, §1.5 Clarification, §2 State, §3 Outline, §4 Everything Else, §5 Errors, §6 Discipline. New: §1 Role, §2 Workspace, §3 Clarification, §4 State, §5 Outline, §6 Research Loop, §7 Writing Phase, §8 Assembly, §9 Errors, §10 Discipline. Sections now match execution order.
+- **§1 split.** Role/tools definition separated from workspace initialization procedure. Old §1 mixed conceptual (what the director is) with procedural (7-step init sequence).
+- **§1.5 promoted to §3.** Clarification phase gets its own integer section instead of being wedged under Role and Workspace.
+- **§4 split into §6/§7/§8.** Research loop (evaluate-gather cycles), writing phase (task creation, writer dispatch, synthesizer dispatch), and assembly are now separate sections. Writing-phase subsections are in execution order: §7.1 task creation → §7.2 writer dispatch → §7.3 synthesizer dispatch.
+- **Outline creation derives from brief (option A).** §5 step 1 now reads `brief.md` and uses the Proposed outline section as the starting structure, rather than re-analyzing the raw query. This closes the implicit contract between clarification and outline creation.
+- **Deduplication.** Removed: return schema table (contracts.md is authoritative), duplicate `workflow_state.json` schema (kept in §2 step 6 only), "First turn" subsection (sequencing now implicit from section order). "Every turn" replaced by §6 LOOP pseudocode + §4 "Read discipline" heading. Eval-1 append condensed to JSON blob + pattern reference.
+- **End-to-end summary.** One-line flow added below the `# Deep Research` heading: Workspace init → Clarification → Outline creation → Research loop → Writing → Synthesis → Assembly.
+- **Cross-reference updates.** All `§N` references updated in `clarification.md` (§3→§5, §2→§4) and `contracts.md` (§4→§6/§7, §5→§9).
+- **README updated.** Opening paragraph, How It Works, and output directory tree now reflect the clarification phase. "Research clarification step" removed from roadmap (implemented). Output tree expanded with `brief.md`, `workflow_state.json`, and all output file types.
+
+Net: 590 → 524 lines, 3506 → 3149 words. No behavioral changes — same dispatch protocols, same atomic write patterns, same hard gates.
+
+| Commit | Description |
+|--------|-------------|
+| `16739cb` | refactor: restructure SKILL.md to execution order, fix outline-clarification relationship |
+
+---
+
 ## 2026-04-13 — Clarification Gate
 
 Adds an interactive clarification phase before the research pipeline starts. The director asks 0–3 clarifying questions (one at a time, multiple-choice preferred), then writes a research brief at `{workspace}/brief.md` and gets user approval before any eval, gather, or write task is dispatched. A non-interactive bypass (`DEEP_RESEARCH_SKIP_CLARIFICATION=1`) lets the eval harness skip the gate entirely.
