@@ -1,6 +1,6 @@
 # Deep Research Plugin for Claude Code
 
-It starts from the moment you ask a research question. The Director asks a few clarifying questions — scope, audience, depth — and drafts a research brief for your approval. Once you approve, it builds a research outline from the brief and the loop begins.
+It starts from the moment you ask a research question. The Director presents a research directive — scope, audience, constraints — for your approval. Once you approve, it builds a research outline and the loop begins.
 
 An Evaluator reads the outline and scores what's covered. Where gaps exist, a Gatherer goes to work: searching the web, fetching pages, storing sources, annotating the outline. The loop runs until the evidence is solid — or the iteration cap is reached.
 
@@ -35,14 +35,14 @@ Or just ask a research question — Claude will invoke the skill automatically w
 
 ## How It Works
 
-1. **Director** — asks clarifying questions, drafts a research brief, and gets your approval before committing to a research run
-2. **Director** — builds a research outline from the approved brief: chapters, subsections, the shape of a thorough answer
+1. **Director** — presents a research directive (scope, constraints, audience) and gets your approval before committing to a research run
+2. **Director** — builds a research outline from the approved directive: chapters, subsections, the shape of a thorough answer
 3. **Evaluator** — scores the outline against gathered evidence; identifies gaps and suggests follow-up queries
 4. **Gatherer** — executes searches, fetches pages, annotates the outline with source IDs
 5. **Writer** — writes each chapter in parallel using the CECI pattern (Claim, Evidence, Comparison, Implication) with inline citations drawn from gathered sources
 6. **Synthesizer** — reads all chapters together; writes Introduction and Conclusion; checks for cross-chapter contradictions
 
-The clarification phase (step 1) produces a brief that anchors scope, audience, and constraints for the entire run. The evaluate-gather loop (steps 3-4) runs until evidence is sufficient or the iteration cap (10) is reached. Writing (step 5) parallelizes all chapters at once.
+The clarification phase (step 1) produces a research directive that anchors scope, audience, and constraints for the entire run. The evaluate-gather loop (steps 3-4) runs until evidence is sufficient or the iteration cap (10) is reached. Writing (step 5) parallelizes all chapters at once.
 
 ## Output
 
@@ -52,10 +52,9 @@ Research artifacts are stored in `.deep-research/<topic-slug>/`:
 .deep-research/
 └── sovereign-wealth-funds/
     ├── workspace/
-    │   ├── brief.md                # Approved research brief
     │   ├── outline.md              # Research outline with source annotations
     │   ├── source_index.json       # Source metadata and query history
-    │   ├── workflow_state.json     # Execution state (tasks, brief status)
+    │   ├── workflow_state.json     # Execution state (research directive, tasks)
     │   └── sources/                # Raw fetched content (1.md, 2.md, ...)
     └── outputs/
         ├── intro.md               # Introduction (written by synthesizer)

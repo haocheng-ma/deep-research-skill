@@ -173,7 +173,7 @@ All prior subagent results are in the `result` fields of completed tasks — you
 After the clarification phase approves the research directive:
 
 1. Use the approved `research_directive` already in conversation context. Use `research_question`, `restated`, and any populated optional fields (`scope_in`, `scope_out`, `timeframe`, `geography`, `audience`) as input to draft the outline from scratch.
-2. Identify the language of the research question. If ambiguous or indeterminate, use `"English"`. Store as `language` in `workflow_state.json`.
+2. Use `research_directive.language` from the approved directive. Do not re-derive.
 3. Expand the proposed headings into a hierarchical outline (up to 4 levels deep) with headings in the detected language, and persist:
    ```
    Write(file_path="{workspace}/outline.md", content=<outline>)
