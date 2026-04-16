@@ -65,23 +65,21 @@ Before any research begins:
 
 5. **Confirm workspace is operational** before creating the outline or dispatching any subagent.
 
-6. **Create initial `workflow_state.json`** with the `brief` object in draft status and an empty `tasks` array:
+6. **Create initial `workflow_state.json`** with the `research_directive` object in draft status and an empty `tasks` array:
    ```bash
    python3 -c "
    import json, tempfile, os, datetime
    ws = {
      'workflow_id': '<topic-slug>-<timestamp>',
      'created_at': datetime.datetime.utcnow().isoformat() + 'Z',
-     'research_question': '<user raw query>',
-     'language': '<detected language>',
      'convergence_script': '<absolute path from step 4>',
      'known_unfillable_gaps': [],
-     'brief': {
+     'research_directive': {
+       'research_question': '<user raw query>',
+       'restated': '<director one-sentence interpretation>',
+       'language': '<detected language>',
        'status': 'draft',
-       'path': '{workspace}/brief.md',
-       'approved_at': None,
-       'revision_count': 0,
-       'revision_cap_overridden': False
+       'approved_at': None
      },
      'tasks': []
    }
@@ -90,21 +88,21 @@ Before any research begins:
    os.replace(tmp.name, '{workspace}/workflow_state.json')
    "
    ```
-   The `tasks` array is empty — `eval-1` is only appended after brief approval.
+   The `tasks` array is empty — `eval-1` is only appended after the directive is approved.
 
-7. **Run the clarification phase** before creating `outline.md` or appending any task. Read `${CLAUDE_SKILL_DIR}/references/clarification.md` and follow it. Clarification produces `brief.md` and flips `workflow_state.brief.status` to `"approved"`. Do not proceed past this step until approved.
+7. **Run the clarification phase** before creating `outline.md` or appending any task. Read `${CLAUDE_SKILL_DIR}/references/clarification.md` and follow it. Clarification produces an approved `research_directive` inside `workflow_state.json`. Do not proceed past this step until `research_directive.status == "approved"`.
 
 All subsequent paths in this document use `{workspace}` and `{outputs}` as shorthand for the full paths established here. Workspace and output paths are passed to subagents via the task JSON, not via placeholder substitution in prompts.
 
 ## 3. Clarification Phase (HARD GATE)
 
-Before any research subagent is dispatched, the director runs a clarification phase to produce and get user approval on a written research brief at `{workspace}/brief.md`.
+Before any research subagent is dispatched, the director runs a clarification phase to produce and get user approval on a `research_directive` inside `workflow_state.json`.
 
-**HARD GATE:** No `evaluate`, `gather`, or `write` task may be appended to `workflow_state.tasks` until `workflow_state.brief.status == "approved"`.
+**HARD GATE:** No `evaluate`, `gather`, or `write` task may be appended to `workflow_state.tasks` until `workflow_state.research_directive.status == "approved"`.
 
-Read `${CLAUDE_SKILL_DIR}/references/clarification.md` for the full phase contents: when to ask clarifying questions, the brief template, revision protocol, approval sequence, and non-interactive bypass. The phase runs inline in the director — no subagent dispatch.
+Read `${CLAUDE_SKILL_DIR}/references/clarification.md` for the full phase contents: the present-and-correct loop, correction handling, directive schema, and approval sequence. The phase runs inline in the director — no subagent dispatch.
 
-On crash recovery: if `workflow_state.brief.status != "approved"`, re-enter this phase with the existing `brief.md` as the starting draft. If already approved, skip this phase entirely and resume the pipeline.
+On crash recovery: if `workflow_state.research_directive.status != "approved"`, re-enter this phase with the existing draft directive as starting state. If already approved, skip this phase entirely and resume the pipeline.
 
 ## 4. Workflow State Management
 
