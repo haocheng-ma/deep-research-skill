@@ -170,7 +170,7 @@ All prior subagent results are in the `result` fields of completed tasks — you
 
 ## 5. Outline Creation
 
-After the clarification phase approves the brief:
+After the clarification phase approves the research directive:
 
 1. Use the approved `research_directive` already in conversation context. Use `research_question`, `restated`, and any populated optional fields (`scope_in`, `scope_out`, `timeframe`, `geography`, `audience`) as input to draft the outline from scratch.
 2. Identify the language of the research question. If ambiguous or indeterminate, use `"English"`. Store as `language` in `workflow_state.json`.
@@ -244,10 +244,13 @@ LOOP:
    ```
    Agent(
      prompt=<evaluator prompt content> + "\n---\nTASK:\n" + JSON.stringify({
-       "research_question": "<user's original query>",
+       "research_directive": {
+         "research_question": "<from approved directive>",
+         "restated": "<from approved directive>",
+         "language": "<from approved directive>"
+       },
        "iteration": <N>,
        "workspace": "<workspace path>",
-       "brief_path": "<workspace>/brief.md",
        "known_unfillable_gaps": <from convergence_check.py output>
      }),
      model="sonnet",
@@ -255,7 +258,7 @@ LOOP:
    )
    ```
 
-No `Read workflow_state.json` before dispatch. The director tracks `iteration` (incremented after each cycle) and `known_unfillable_gaps` (from convergence_check.py output) in its own conversation context.
+No `Read workflow_state.json` before dispatch. The director tracks `iteration` (incremented after each cycle), `known_unfillable_gaps` (from convergence_check.py output), and the `research_directive` (from the approved clarification phase) in its own conversation context.
 
 **On return -- handle `research_complete`:**
 
@@ -319,7 +322,11 @@ If `research_complete` is `true`:
    ```
    Agent(
      prompt=<gatherer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
-       "research_question": "<user's original query>",
+       "research_directive": {
+         "research_question": "<from approved directive>",
+         "restated": "<from approved directive>",
+         "language": "<from approved directive>"
+       },
        "queries": <suggested_queries from evaluator return>,
        "priority_section": <priority_section from evaluator return>,
        "knowledge_gap": <knowledge_gap from evaluator return>,
@@ -395,13 +402,15 @@ TASKS_EOF
    ```
    Agent(
      prompt=<writer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
-       "research_question": "<user's original query>",
+       "research_directive": {
+         "research_question": "<from approved directive>",
+         "restated": "<from approved directive>",
+         "language": "<from approved directive>"
+       },
        "chapter": "## 3. Core Mechanisms",
        "report_path": "{outputs}/chapter-3.md",
-       "language": "<language from initial workflow_state.json creation>",
        "workspace": "<workspace path>",
        "outputs": "<outputs path>",
-       "brief_path": "<workspace>/brief.md",
        "source_files": ["{workspace}/sources/2.md", "{workspace}/sources/5.md"],
        "source_metadata": {"2": {"title": "...", "url": "..."}, "5": {"title": "...", "url": "..."}}
      }),
@@ -428,8 +437,11 @@ After all writers return, dispatch the synthesizer.
    ```
    Agent(
      prompt=<synthesizer prompt content> + "\n---\nTASK:\n" + JSON.stringify({
-       "research_question": "<user's original query>",
-       "language": "<language from conversation context>",
+       "research_directive": {
+         "research_question": "<from approved directive>",
+         "restated": "<from approved directive>",
+         "language": "<from approved directive>"
+       },
        "chapter_files": ["{outputs}/chapter-2.md", "{outputs}/chapter-3.md", ...],
        "intro_path": "{outputs}/intro.md",
        "conclusion_path": "{outputs}/conclusion.md",
