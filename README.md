@@ -10,26 +10,35 @@ The result: a structured report with inline citations, saved to `.deep-research/
 
 ## Installation
 
-**Install:**
+Run these two commands inside Claude Code. The first registers the plugin source; the second installs the plugin.
+
 ```
 /plugin marketplace add haocheng-ma/deep-research-skill
 /plugin install deep-research@deep-research-skill-dev
 ```
 
-**For local development:**
-```
-claude --plugin-dir ./deep-research-skill
-```
+That's it — start a new session and you're ready to go.
 
-**Update to latest version:**
+### Update
+
 ```
 /plugin update deep-research
 ```
-Restart your session after updating.
 
-**Uninstall:**
+Start a new session after updating to pick up the changes.
+
+### Uninstall
+
 ```
 /plugin uninstall deep-research
+```
+
+### Local development
+
+If you're working on the plugin itself, load it directly from a local directory instead of installing:
+
+```
+claude --plugin-dir ./deep-research-skill
 ```
 
 ### Verify Installation
