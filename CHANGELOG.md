@@ -2,6 +2,53 @@
 
 Implementation history grouped by feature, newest first.
 
+## 2026-04-16 — Clarification Redesign
+
+Replaces the nine-section `brief.md` artifact with a minimal structured `research_directive` object inside `workflow_state.json`. The clarification phase shrinks from a questionnaire-then-approval pattern to a single present-and-correct loop. Downstream subagents consume structured directive fields instead of parsing a markdown brief.
+
+### What changed
+
+- **`clarification.md` fully rewritten** (175 → 105 lines) — one legal action (present the directive for approval), six correction-handling cases (refinement, new constraint, override, contradiction, approval-with-trailing-correction, topic drift with restart-or-fold), anti-patterns table. No pre-questions, no revision cap, no markdown artifact, no non-interactive bypass.
+- **`research_directive` replaces `brief` in `workflow_state.json`** — five required fields (`research_question`, `restated`, `language`, `status`, `approved_at`) and five optional presence-as-provenance constraint fields (`scope_in`, `scope_out`, `timeframe`, `geography`, `audience`). Absent field = no user-stated preference.
+- **Approval is a single atomic write** — flips `status: "draft" → "approved"` and sets `approved_at`. No markdown `## Approved` marker, no two-file sequence, no split-brain recovery case.
+- **Crash recovery simplified** — 3 cases (was 4). Split-brain case removed.
+- **§5 outline creation uses in-context directive** — no disk read of `workflow_state.json`. The directive was just written and presented; re-reading from disk is gratuitous. §4 Read discipline gains no new exception.
+- **All four dispatch JSONs updated** — evaluator, gatherer, writer, synthesizer receive `research_directive` object (minus `status`/`approved_at`) instead of separate `brief_path` and top-level `research_question`. `language` moves inside the directive for writer and synthesizer.
+- **`evaluator.md`** — `BRIEF_CONSTRAINTS` → `DIRECTIVE_CONSTRAINTS`. Reads structured fields directly from task assignment instead of parsing `brief.md`.
+- **`writer.md`** — `BRIEF_ANCHORING` → `DIRECTIVE_ANCHORING`. `LANGUAGE` section references `research_directive.language`. Same soft-guidance semantics.
+- **`gatherer.md` and `synthesizer.md`** — INPUT blocks updated. Synthesizer `LANGUAGE` section references `research_directive.language`.
+- **`contracts.md`** — preamble updated: all dispatches include `research_directive` as anchoring context.
+- **`tests/test_brief_fixture.py` deleted**, replaced by **`tests/test_directive_fixture.py`** — 13 tests pinning the new schema, including negative assertions (`no brief key`, `no top-level research_question`).
+- **`README.md`** — removed `brief.md` from directory tree, updated prose to reference research directive.
+
+### What was deleted
+
+- `brief.md` artifact and its nine-section template.
+- `brief.revision_count`, `brief.revision_cap_overridden`, `brief.path` fields.
+- The revision-cap prompt at count 3.
+- The `## Approved` markdown marker and the two-file approval sequence.
+- The split-brain crash recovery case.
+- The non-interactive bypass (`DEEP_RESEARCH_SKIP_CLARIFICATION`).
+- The multiple-choice question format and the 3-question cap.
+- The top-level `research_question` field in subagent task JSONs.
+- The `depth` concept (folded into `audience`).
+
+No backward-compatibility burden. Old `workflow_state.json` files with the `brief` object are incompatible; delete `.deep-research/{slug}/` to start fresh.
+
+| Commit | Description |
+|--------|-------------|
+| `3331360` | test: replace brief schema tests with research_directive schema tests |
+| `e97566e` | rewrite: clarification.md — present-and-correct loop replaces brief template |
+| `124cdb4` | update: SKILL.md §2-§3 — research_directive replaces brief object |
+| `4e2e1c3` | update: SKILL.md §4-§5 — crash recovery and outline creation use research_directive |
+| `42fa923` | update: SKILL.md §6-§7 — all dispatch JSONs use research_directive |
+| `7c23a1a` | update: evaluator.md — consume research_directive instead of brief_path |
+| `01a04ba` | update: writer.md — consume research_directive instead of brief_path |
+| `93b7558` | update: gatherer.md, synthesizer.md, contracts.md — research_directive replaces research_question |
+| `8efd80c` | fix: remove stale brief references from README and SKILL.md §5 step 2 |
+
+---
+
 ## 2026-04-14 — SKILL.md Restructure
 
 Restructures SKILL.md from topic-grouped sections to execution-order sections. The old layout had §4 doing too much (research loop, writing, synthesis, assembly all in one section) and writing-phase instructions scattered across §4.3, §4.5, and §4.6 in non-linear order.

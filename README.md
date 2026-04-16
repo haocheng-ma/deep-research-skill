@@ -21,6 +21,17 @@ The result: a structured report with inline citations, saved to `.deep-research/
 claude --plugin-dir ./deep-research-skill
 ```
 
+**Update to latest version:**
+```
+/plugin update deep-research
+```
+Restart your session after updating.
+
+**Uninstall:**
+```
+/plugin uninstall deep-research
+```
+
 ### Verify Installation
 
 Start a new session and ask a research question. Claude should invoke the skill automatically, or trigger it explicitly with `/deep-research <topic>`.
