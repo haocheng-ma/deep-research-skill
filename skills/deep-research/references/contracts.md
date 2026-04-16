@@ -2,7 +2,7 @@
 
 Every subagent returns structured JSON as its final message. The director reads the return, updates `workflow_state.json`, and decides the next action. For dispatch protocols, see SKILL.md §6 (research loop) and §7 (writing phase).
 
-All dispatches include `research_question` as anchoring context in the task assignment.
+All dispatches include `research_directive` as anchoring context in the task assignment. The directive contains `research_question`, `restated`, `language`, and any user-stated constraint fields (`scope_in`, `scope_out`, `timeframe`, `geography`, `audience`).
 
 ## Status vocabulary
 

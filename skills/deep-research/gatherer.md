@@ -6,7 +6,7 @@ You do NOT evaluate research completeness. You do NOT evolve the outline structu
 
 <INPUT>
 The director provides a task assignment containing:
-- `research_question`: The user's original query
+- `research_directive`: The approved research directive object (contains `research_question`, `restated`, `language`, and any user-stated constraint fields)
 - `queries`: Search queries to execute
 - `priority_section`: The outline section with the most pressing gap
 - `knowledge_gap`: What specific information is most needed
