@@ -156,14 +156,15 @@ When appending multiple tasks at once (e.g., writing-phase task creation), pass 
 
 Exception: crash recovery. If resuming a conversation and `workflow_state.json` already exists, read it once to determine the last completed task and continue.
 
+Outline creation (§5) uses the approved directive already in the director's conversation context from the approval turn — not a disk read. The directive was just written and presented; re-reading it from disk would be gratuitous.
+
 ### Crash recovery
 
 If you resume a conversation and `workflow_state.json` already exists, read it once to determine the current phase:
 
-- If `brief.status == "draft"` (or `brief` object is missing): re-enter the clarification phase (§3) with the existing `brief.md` as the starting draft.
-- If `brief.status == "approved"` and `{workspace}/outline.md` exists and `tasks` is non-empty: resume the pipeline from the next runnable task using the existing task chain. If the user re-invoked the skill with a *different* raw query, ignore the new query — the approved brief is authoritative. The user must delete `.deep-research/{slug}/` to start fresh.
-- If `brief.status == "approved"` but `outline.md` is missing *or* `tasks` is empty: the process died after approval but before outline creation or first task append. Resume at outline creation (§5), which will then append `eval-1`.
-- If `brief.md` contains `## Approved` but `workflow_state.brief.status == "draft"`: the process died between the two approval writes. Treat as draft (workflow_state is authoritative), log a warning to the user, and re-prompt for approval.
+- If `research_directive` is absent or `research_directive.status == "draft"`: re-enter the clarification phase (§3) with the existing draft directive as starting state. Re-present the summary and wait.
+- If `research_directive.status == "approved"` and `{workspace}/outline.md` exists and `tasks` is non-empty: resume the pipeline from the next runnable task using the existing task chain. If the user re-invoked the skill with a *different* raw query, ignore the new query — the approved directive is authoritative. The user must delete `.deep-research/{slug}/` to start fresh.
+- If `research_directive.status == "approved"` but `outline.md` is missing *or* `tasks` is empty: the process died after approval but before outline creation or first task append. Resume at outline creation (§5), which will then append `eval-1`.
 
 All prior subagent results are in the `result` fields of completed tasks — you do not need conversation history.
 
@@ -171,7 +172,7 @@ All prior subagent results are in the `result` fields of completed tasks — you
 
 After the clarification phase approves the brief:
 
-1. Read `{workspace}/brief.md`. Use the **Proposed outline** section as the starting structure for `outline.md`.
+1. Use the approved `research_directive` already in conversation context. Use `research_question`, `restated`, and any populated optional fields (`scope_in`, `scope_out`, `timeframe`, `geography`, `audience`) as input to draft the outline from scratch.
 2. Identify the language of the research question. If ambiguous or indeterminate, use `"English"`. Store as `language` in `workflow_state.json`.
 3. Expand the proposed headings into a hierarchical outline (up to 4 levels deep) with headings in the detected language, and persist:
    ```
