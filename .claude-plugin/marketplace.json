@@ -8,7 +8,7 @@
     {
       "name": "deep-research",
       "description": "Use when the user asks for in-depth research on a topic that requires investigation across multiple angles — not a quick lookup or single-source answer",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "source": "./"
     }
   ]
