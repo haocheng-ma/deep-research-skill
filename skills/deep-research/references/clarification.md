@@ -37,6 +37,22 @@ On user response:
 - **Approval** ("go" or similar): set `status = "approved"` and `approved_at` to the current UTC timestamp via atomic write. Proceed to outline creation (SKILL.md §5) using the directive already in conversation context — no re-read of `workflow_state.json`.
 - **Correction**: update fields per the correction-handling rules below, re-render summary, loop.
 
+## Eval-mode auto-approval
+
+When the skill runs under the evaluation harness there is no interactive user to respond. A single environment variable, `DEEP_RESEARCH_EVAL`, switches the phase into an auto-approve mode. The audit trail (the rendered summary) is preserved; only the wait-for-user step is skipped.
+
+At phase entry, **after** the existing status-based check in "Hard gate" has selected one of *skip*, *resume*, or *fresh*, run:
+
+```bash
+printenv DEEP_RESEARCH_EVAL
+```
+
+- If the status check already selected *skip* (`status == "approved"`): proceed to outline creation regardless of the env var. Eval mode does not change the gate; it only adds a new way to *reach* approved.
+- Else if `printenv` output is exactly `1`: execute steps 1–5 of the "present-and-correct loop" up through rendering the summary (draft or resume as the status check selected, atomic-write draft, render summary). Then immediately run the "Approval sequence" atomic write to flip `status` to `"approved"`. Do not wait for a user turn. Proceed to outline creation.
+- Else (unset, empty, or any other value): run the normal interactive loop.
+
+Rendering the summary in eval mode is deliberate: the inferred assumptions — scope, geography, audience, language — become part of the conversation trace, which is how eval analysis tells whether the director's clarification choices affected report quality. Silent auto-approval without the summary would defeat the purpose.
+
 ## Directive schema
 
 **Required fields** (always populated by the director):
@@ -103,3 +119,4 @@ Single write. No markdown marker. No second file.
 | "This query is clear, I'll skip straight to the pipeline" | NO. Always produce a directive and get approval. Even a clear query gets one present-approve round-trip. |
 | "I'll add a revision cap to prevent infinite loops" | NO. Re-rendering is cheap. If the user iterates, that's the shape of the problem. |
 | "I'll write the directive to a separate markdown file" | NO. The canonical record is the structured object in `workflow_state.json`. |
+| "I'll skip rendering the summary in eval mode to save tokens" | NO. The summary is the audit trail for what assumptions the director inferred under headless eval. Render it, then auto-approve. |
