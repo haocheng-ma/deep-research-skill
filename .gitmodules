@@ -1,0 +1,4 @@
+[submodule "eval/bench"]
+	path = eval/bench
+	url = https://github.com/haocheng-ma/deep_research_bench.git
+	branch = eval-local
