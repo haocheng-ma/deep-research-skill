@@ -1,0 +1,17 @@
+[project]
+name = "deep-research-skill-eval"
+version = "0.0.0"
+description = "Local eval harness for deep-research-skill (eval branch only)."
+requires-python = ">=3.12"
+dependencies = [
+    "tqdm>=4.65.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "requests>=2.28.0",
+    "openai>=1.0",
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "eval/tests", "eval/bench/tests"]
+pythonpath = ["eval/bench"]
