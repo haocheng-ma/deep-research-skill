@@ -296,7 +296,7 @@ def main():
 
     # Create run directory
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
-    run_dir = os.path.join("eval_runs", timestamp)
+    run_dir = os.path.join(str(_HERE / "runs"), timestamp)
     os.makedirs(os.path.join(run_dir, "tasks"), exist_ok=True)
 
     # Write config.json
