@@ -2,3 +2,9 @@
 __pycache__/
 *.pyc
 .DS_Store
+docs
+
+# eval harness (eval branch only)
+eval/runs/
+eval/bench/results/
+.env
