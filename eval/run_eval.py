@@ -114,7 +114,7 @@ def run_task(
 
     cmd = [
         "claude", "-p",
-        "--permission-mode", "auto",
+        "--permission-mode", "bypassPermissions",
         "--output-format", "stream-json",
         "--verbose",
         "--plugin-dir", PLUGIN_DIR,

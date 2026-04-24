@@ -31,7 +31,12 @@ Not legal in this phase: asking pre-questions before presenting a summary, draft
    - When scope was inferred with low confidence, flag it prominently: *"Scope: I'm going to treat this as payments infrastructure. Fintech is broad — if you meant consumer lending, regulatory, or something else, say so before we start."*
    - Asks: *"Proceed, or correct anything?"*
 4. Write the directive to `workflow_state.json` atomically (before presenting — deliberate: on crash, the persisted state matches what the user was about to see).
-5. Present the summary. Wait.
+5. Check for eval mode **via a Bash tool call** (this MUST be a tool call, not deferred to after text output):
+   ```bash
+   printenv DEEP_RESEARCH_EVAL
+   ```
+   - If output is exactly `1`: present the summary as text, then immediately run the Approval sequence (set `status = "approved"`, `approved_at` = current UTC) via another Bash tool call. Do not wait for a user turn. Proceed to outline creation (SKILL.md §5).
+   - Otherwise: present the summary as text and wait for a user response.
 
 On user response:
 - **Approval** ("go" or similar): set `status = "approved"` and `approved_at` to the current UTC timestamp via atomic write. Proceed to outline creation (SKILL.md §5) using the directive already in conversation context — no re-read of `workflow_state.json`.
@@ -39,19 +44,7 @@ On user response:
 
 ## Eval-mode auto-approval
 
-When the skill runs under the evaluation harness there is no interactive user to respond. A single environment variable, `DEEP_RESEARCH_EVAL`, switches the phase into an auto-approve mode. The audit trail (the rendered summary) is preserved; only the wait-for-user step is skipped.
-
-At phase entry, **after** the existing status-based check in "Hard gate" has selected one of *skip*, *resume*, or *fresh*, run:
-
-```bash
-printenv DEEP_RESEARCH_EVAL
-```
-
-- If the status check already selected *skip* (`status == "approved"`): proceed to outline creation regardless of the env var. Eval mode does not change the gate; it only adds a new way to *reach* approved.
-- Else if `printenv` output is exactly `1`: execute steps 1–5 of the "present-and-correct loop" up through rendering the summary (draft or resume as the status check selected, atomic-write draft, render summary). Then immediately run the "Approval sequence" atomic write to flip `status` to `"approved"`. Do not wait for a user turn. Proceed to outline creation.
-- Else (unset, empty, or any other value): run the normal interactive loop.
-
-Rendering the summary in eval mode is deliberate: the inferred assumptions — scope, geography, audience, language — become part of the conversation trace, which is how eval analysis tells whether the director's clarification choices affected report quality. Silent auto-approval without the summary would defeat the purpose.
+When `DEEP_RESEARCH_EVAL=1`, the `printenv` check in step 5 of the present-and-correct loop auto-approves the directive. The summary is still rendered — it becomes the audit trail for what assumptions the director inferred under headless eval.
 
 ## Directive schema
 

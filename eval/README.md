@@ -7,7 +7,7 @@ Local-only eval harness for `deep-research-skill`. Lives on the `eval` branch; n
 ```bash
 # from skill repo root, on the eval branch
 cp .env.example .env
-# edit .env to add real OPENROUTER_API_KEY and JINA_API_KEY
+# edit .env to add real OFOX_API_KEY and JINA_API_KEY
 uv sync
 git submodule update --init --recursive
 ```
