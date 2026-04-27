@@ -79,6 +79,22 @@ class TestFindWorkspaceSlug:
         )
         assert run_eval.find_workspace_slug(str(conv)) == "k8s_autoscaling-2025"
 
+    def test_finds_slug_when_mkdir_uses_absolute_path(self, tmp_path):
+        """The skill sometimes builds absolute paths (mkdir -p
+        /home/x/.deep-research/<slug>/...) instead of relative ones; the
+        slug must still be extracted. This was the most common cause of
+        spurious 'Could not discover workspace directory' failures in the
+        100-task benchmark — 6 of the 15 individual run-failures."""
+        conv = tmp_path / "conversation.jsonl"
+        conv.write_text(
+            '{"input":{"command":"mkdir -p /home/jye/deep-research-skill/'
+            '.deep-research/diamond-sutra-study-notes/workspace/sources"}}\n'
+        )
+        assert (
+            run_eval.find_workspace_slug(str(conv))
+            == "diamond-sutra-study-notes"
+        )
+
 
 class TestAssembleOutputJsonl:
     def test_assembles_successful_tasks(self, tmp_path):
@@ -162,6 +178,73 @@ class TestCliArgparse:
         assert exc.value.code == 2
         captured = capsys.readouterr()
         assert "--tasks" in captured.err
+
+
+class TestMainAssemblyInFinally:
+    def test_assembly_runs_when_loop_is_interrupted(
+        self, tmp_path, monkeypatch
+    ):
+        """If the per-task loop is interrupted (Ctrl+C surfacing as
+        KeyboardInterrupt), output.jsonl and summary.json must still be
+        produced for whatever tasks completed before the interrupt.
+
+        This protects against the orphan-run failure mode observed at
+        2026-04-25T06-05-22, where the harness was killed mid-run and
+        the aggregate files were never written."""
+        qfile = tmp_path / "query.jsonl"
+        qfile.write_text(
+            '{"id": 1, "topic": "T", "language": "en", "prompt": "p1"}\n'
+            '{"id": 2, "topic": "T", "language": "en", "prompt": "p2"}\n'
+        )
+        runs_root = tmp_path / "runs"
+        runs_root.mkdir()
+
+        monkeypatch.setattr(run_eval, "QUERY_FILE", str(qfile))
+        monkeypatch.setattr(run_eval, "_HERE", tmp_path)
+
+        call_count = {"n": 0}
+
+        def fake_run_task(task_id, prompt, task_dir, timeout_minutes, model):
+            call_count["n"] += 1
+            os.makedirs(task_dir, exist_ok=True)
+            if call_count["n"] == 1:
+                # Task 1 succeeds: write a real report.
+                ws_outputs = os.path.join(task_dir, "workspace", "outputs")
+                os.makedirs(ws_outputs, exist_ok=True)
+                with open(os.path.join(ws_outputs, "report.md"), "w") as f:
+                    f.write("# Task 1 report")
+                return {
+                    "id": task_id, "status": "success",
+                    "duration_seconds": 100, "article_length": 14,
+                    "error": None,
+                }
+            # Task 2: simulate user Ctrl+C mid-flight.
+            raise KeyboardInterrupt()
+
+        monkeypatch.setattr(run_eval, "run_task", fake_run_task)
+        monkeypatch.setattr(sys, "argv", ["run_eval.py", "--tasks", "1,2"])
+
+        with pytest.raises(KeyboardInterrupt):
+            run_eval.main()
+
+        run_dirs = list(runs_root.iterdir())
+        assert len(run_dirs) == 1
+        run_dir = run_dirs[0]
+
+        output_jsonl = run_dir / "output.jsonl"
+        summary_json = run_dir / "summary.json"
+        assert output_jsonl.exists()
+        assert summary_json.exists()
+
+        with open(output_jsonl) as f:
+            lines = [json.loads(l) for l in f if l.strip()]
+        assert [r["id"] for r in lines] == [1]
+
+        with open(summary_json) as f:
+            summary = json.load(f)
+        # Only task 1 was recorded as a result before the interrupt.
+        assert summary["succeeded"] == 1
+        assert summary["total_tasks"] == 1
 
 
 class TestRunTaskEnv:

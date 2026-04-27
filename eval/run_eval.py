@@ -73,15 +73,18 @@ def load_queries(query_file: str) -> dict[int, dict]:
     return queries
 
 
-_MKDIR_PATTERN = re.compile(r"mkdir\s+-p\s+\.deep-research/([\w][\w-]+)/")
+_MKDIR_PATTERN = re.compile(r"mkdir\s+-p\s+(?:[^\s]*?/)?\.deep-research/([\w][\w-]+)/")
 
 
 def find_workspace_slug(conversation_path: str) -> str | None:
     """Extract the workspace slug from the first mkdir command in conversation.jsonl.
 
     The deep-research skill's first Bash call is always
-    `mkdir -p .deep-research/<slug>/...`, so the first match is deterministic
-    and sufficient. Returns None if no mkdir is found.
+    `mkdir -p [<prefix>/].deep-research/<slug>/...`. The optional ``<prefix>/``
+    accepts both relative (``.deep-research/...``) and absolute
+    (``/home/x/.deep-research/...``) forms, since the skill sometimes
+    constructs paths from ``$PWD`` and other variables. Returns None if no
+    mkdir is found.
     """
     with open(conversation_path) as f:
         for line in f:
@@ -314,43 +317,43 @@ def main():
     _log(f"Tasks: {len(task_ids)} ({args.tasks}), "
          f"Timeout: {args.timeout}min")
 
-    # Run tasks sequentially
-    results = []
-    for i, tid in enumerate(task_ids, start=1):
-        task_dir = os.path.join(run_dir, "tasks", f"task_{tid:03d}")
-        prompt = queries[tid]["prompt"]
-        result = run_task(tid, prompt, task_dir, args.timeout, args.model)
+    # Run tasks sequentially. Aggregate output is produced in `finally` so
+    # an interrupted run still yields output.jsonl / summary.json for the
+    # tasks that completed before the interrupt.
+    results: list[dict] = []
+    try:
+        for i, tid in enumerate(task_ids, start=1):
+            task_dir = os.path.join(run_dir, "tasks", f"task_{tid:03d}")
+            prompt = queries[tid]["prompt"]
+            result = run_task(tid, prompt, task_dir, args.timeout, args.model)
 
-        os.makedirs(task_dir, exist_ok=True)
-        with open(os.path.join(task_dir, "result.json"), "w") as f:
-            json.dump(result, f, indent=2)
+            os.makedirs(task_dir, exist_ok=True)
+            with open(os.path.join(task_dir, "result.json"), "w") as f:
+                json.dump(result, f, indent=2)
 
-        results.append(result)
-        _log(f"[{i}/{len(task_ids)}] task_{tid:03d} "
-             f"completed in {result['duration_seconds']:.0f}s ({result['status']})")
+            results.append(result)
+            _log(f"[{i}/{len(task_ids)}] task_{tid:03d} "
+                 f"completed in {result['duration_seconds']:.0f}s ({result['status']})")
+    finally:
+        _log("Assembling output.jsonl...")
+        assemble_output_jsonl(run_dir, queries)
 
-    # Assemble output JSONL
-    _log("Assembling output.jsonl...")
-    assemble_output_jsonl(run_dir, queries)
+        summary = generate_summary(
+            timestamp=timestamp,
+            task_set=args.tasks,
+            timeout_minutes=args.timeout,
+            results=results,
+        )
+        with open(os.path.join(run_dir, "summary.json"), "w") as f:
+            json.dump(summary, f, indent=2)
 
-    # Generate summary
-    summary = generate_summary(
-        timestamp=timestamp,
-        task_set=args.tasks,
-        timeout_minutes=args.timeout,
-        results=results,
-    )
-    with open(os.path.join(run_dir, "summary.json"), "w") as f:
-        json.dump(summary, f, indent=2)
-
-    # Print summary
-    _log(f"\n{'='*50}")
-    _log(f"Run complete: {run_dir}")
-    _log(f"  Tasks: {summary['succeeded']}/{summary['total_tasks']} succeeded")
-    if summary["failed_ids"]:
-        _log(f"  Failed: {summary['failed_ids']}")
-    _log(f"  Duration: {summary['total_duration_seconds']}s")
-    _log(f"{'='*50}")
+        _log(f"\n{'='*50}")
+        _log(f"Run complete: {run_dir}")
+        _log(f"  Tasks: {summary['succeeded']}/{summary['total_tasks']} succeeded")
+        if summary["failed_ids"]:
+            _log(f"  Failed: {summary['failed_ids']}")
+        _log(f"  Duration: {summary['total_duration_seconds']}s")
+        _log(f"{'='*50}")
 
 
 if __name__ == "__main__":
