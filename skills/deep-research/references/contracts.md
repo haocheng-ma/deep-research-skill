@@ -32,6 +32,8 @@ Every subagent return includes a `status` field:
 }
 ```
 
+`research_complete=true` ⟺ `section_gaps={}`. Returning `research_complete=true` with non-empty `section_gaps` violates the contract. If a return violates this constraint, the director still writes the result to `workflow_state.json`; the convergence script trusts `research_complete=true` and surfaces the violation in its `reason` field. The iteration cap is the only backstop.
+
 ## Gatherer return contract
 ```json
 {

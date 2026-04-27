@@ -120,6 +120,8 @@ Return your evaluation as your final message in this JSON format:
 
 Distinguish between topic-level and data-level coverage in `section_gaps`. A section that discusses a topic but lacks specific numbers, names, or dates has a data gap.
 
+`research_complete=true` ⟺ `section_gaps={}`. The two are linked — if you have any gap to flag, set `research_complete=false`. Never return one without the other.
+
 Before setting `research_complete: true`, verify every component of the research question (geography, time period, comparison set) is addressed by at least one outline section.
 
 IMPORTANT: The director may re-dispatch you for verification. Assess independently based solely on workspace state.
@@ -128,7 +130,7 @@ Do NOT wrap the JSON in markdown code fences. Return it as plain text.
 </OUTPUT_FORMAT>
 
 <CALIBRATION>
-Bad output (too shallow -- declares complete prematurely):
+Bad output (declares complete prematurely — fields agree, but the underlying assessment is sloppy. The contract is satisfied; the rubric is not.):
 {
   "status": "done",
   "research_complete": true,

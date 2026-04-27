@@ -108,18 +108,28 @@ def compute_convergence(state: dict) -> dict:
                 if not sources_added_for_section(gather, section):
                     known_unfillable.add(section)
 
-    # Determine actionable gaps: current gaps that are NOT known unfillable
+    # Determine actionable gaps: current gaps that are NOT known unfillable.
+    # Computed before the research_complete branch because the violation
+    # diagnostic in `reason` (below) needs to see current_gaps.
     current_gaps = set(latest_result.get("section_gaps", {}).keys())
-    actionable = current_gaps - known_unfillable
 
-    # Research complete with no remaining gaps
-    if latest_result.get("research_complete") and not current_gaps:
+    # Research complete: trust the evaluator. Per the new contract,
+    # research_complete=true ⟺ section_gaps={}. If a violation slips
+    # through, surface it in `reason` for retrospective analysis but
+    # still trust research_complete (one possibly-shallow run is preferable
+    # to the override loop that this trim removes).
+    if latest_result.get("research_complete"):
         return {
             "actionable_gaps_remain": False,
             "known_unfillable_gaps": sorted(known_unfillable),
             "forced_completion": False,
-            "reason": None,
+            "reason": (
+                "Contract violation: research_complete=true with non-empty section_gaps; trusting research_complete"
+                if current_gaps else None
+            ),
         }
+
+    actionable = current_gaps - known_unfillable
 
     # All remaining gaps are unfillable — force completion
     if not actionable and current_gaps:
