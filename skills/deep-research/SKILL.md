@@ -51,10 +51,15 @@ Before any research begins:
 2. Set workspace paths:
    - `{workspace}` = `.deep-research/{slug}/workspace`
    - `{outputs}` = `.deep-research/{slug}/outputs`
-3. Create the directory structure:
+3. Create the directory structure and clear stale derivable artifacts from any prior incomplete workflow at this same slug:
    ```
-   Bash(command="mkdir -p .deep-research/{slug}/workspace/sources .deep-research/{slug}/outputs")
+   Bash(command="mkdir -p .deep-research/{slug}/workspace/sources .deep-research/{slug}/outputs && \
+     rm -f .deep-research/{slug}/workspace/outline.md \
+           .deep-research/{slug}/workspace/source_index.json \
+           .deep-research/{slug}/outputs/*.md \
+           .deep-research/{slug}/outputs/*.md.tmp")
    ```
+   The `sources/` subdirectory is preserved — it is the gather cache that legitimately speeds up retries. The `*.md.tmp` glob covers orphan atomic-write artifacts (e.g. `report.md.tmp` left behind if a prior run died between the §8 atomic Write and the rename). Re-invoking the skill on the same slug discards prior derivable outputs (`outline.md`, `source_index.json`, `outputs/*.md` including any prior `report.md`); to preserve a successful prior run, copy `.deep-research/{slug}/outputs/` aside before re-invoking, or use a different slug.
 4. **Verify convergence script:**
    Resolve the script path relative to the skill directory:
    ```

@@ -208,9 +208,10 @@ def test_outline_evolution_resets_convergence():
     assert out["actionable_gaps_remain"] is True
 
 
-def test_research_complete_with_remaining_gaps():
-    """research_complete: true but section_gaps non-empty — actionable gaps remain.
-    The director's false-completion verification would catch this."""
+def test_research_complete_with_remaining_gaps_is_contract_violation():
+    """Under the new contract, research_complete=true + non-empty section_gaps is a violation.
+    The script trusts research_complete=true, surfaces the violation in the `reason` field,
+    and reports no actionable gaps. The iteration cap is the only backstop."""
     state = {
         "workflow_id": "test-9",
         "tasks": [
@@ -220,9 +221,13 @@ def test_research_complete_with_remaining_gaps():
         ],
     }
     out = run_script(state)
-    # Evaluator claims complete but gaps exist — script reports actionable gaps
-    assert out["actionable_gaps_remain"] is True
+    assert out["actionable_gaps_remain"] is False
     assert out["forced_completion"] is False
+    # `reason` distinguishes contract-violation completions from clean ones
+    # (None when the contract holds). Substring match on "Contract violation"
+    # so re-wording the rest of the diagnostic does not break the test.
+    assert out["reason"] is not None
+    assert "Contract violation" in out["reason"]
 
 
 def test_substring_match_false_positive():
