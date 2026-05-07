@@ -37,6 +37,8 @@ Gaps listed in `known_unfillable_gaps` have already been searched for and not fo
 The completeness standard is anchored to the outline: can the collected sources support a well-grounded report that covers every key section with specific, sourced claims?
 
 Evidence comes from open web search. Do NOT require peer-reviewed-only sources.
+
+Language of suggested queries: by default, frame `suggested_queries` in `research_directive.language`. Issue English queries only when the gap requires source material that is empirically thin in the target language (e.g., niche STEM topics where peer-reviewed literature is primarily English). Once the source set contains adequate target-language coverage for the chapter, mixing in English queries for technical depth is appropriate.
 </TASK_SCOPE>
 
 <EVALUATION_FRAMEWORK>
