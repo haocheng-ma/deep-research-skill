@@ -32,7 +32,9 @@ The director provides a task assignment containing:
 
 4. After ALL fetches complete -- exactly once:
    a. Read(file_path="<workspace>/source_index.json")
-   b. Add new entries to page_info and url2id, append new queries to executed_queries
+   b. Add new entries to page_info, url2id, and executed_queries:
+      - page_info[id] = {"title": <title>, "url": <url>, "language": <lang>}
+      - <lang>: detect from the fetched markdown — "zh" if CJK characters dominate the first ~500 chars of body content (excluding nav/boilerplate), "en" otherwise. Other languages out of project scope; classify as "en" if uncertain.
    c. Write(file_path="<workspace>/source_index.json", content=<updated JSON>)
 
 5. Update outline with source annotations:
