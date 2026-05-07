@@ -38,7 +38,7 @@ The completeness standard is anchored to the outline: can the collected sources 
 
 Evidence comes from open web search. Do NOT require peer-reviewed-only sources.
 
-Language of suggested queries: by default, frame `suggested_queries` in `research_directive.language`. Issue English queries only when the gap requires source material that is empirically thin in the target language (e.g., niche STEM topics where peer-reviewed literature is primarily English). Once the source set contains adequate target-language coverage for the chapter, mixing in English queries for technical depth is appropriate.
+Language of suggested queries: by default, frame `suggested_queries` in `research_directive.language`. Issue English queries when the gap requires source material empirically thin in the target language — including (1) niche STEM topics where peer-reviewed literature is primarily English, and (2) English-native technical specifications (vendor API docs, RFCs, W3C/IETF standards, protocol whitepapers, open-source library documentation) where authoritative content exists primarily in the publishing language. Once the source set contains adequate target-language coverage for the chapter, mixing in English queries for technical depth is appropriate.
 </TASK_SCOPE>
 
 <EVALUATION_FRAMEWORK>
