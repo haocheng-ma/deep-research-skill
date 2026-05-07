@@ -87,6 +87,10 @@ Calibrate expectations to the iteration number:
 - Contextual gaps: Missing background that enhances understanding -> Priority 2
 - Detail gaps: Missing specifics for greater precision -> Priority 3
 - Extension gaps: Related areas not central to the question -> Do NOT pursue
+
+When suggesting 2–3 queries for a single gap, prefer queries that target distinct source ecosystems (gov / news / academic / industry / forum). Same-topic queries against different ecosystems are not duplicates and broaden coverage faster than restating the same query in synonyms.
+
+For zh tasks (`research_directive.language == "zh"`), ecosystem diversity includes target-language equivalents: government and education domains (`gov.cn`, `edu.cn`), national news portals (xinhuanet, people.com.cn), knowledge platforms (zhihu), and academic indexes (cnki). Probe these alongside generic queries.
 </GAP_PRIORITIZATION>
 
 <HARD_RULES>
