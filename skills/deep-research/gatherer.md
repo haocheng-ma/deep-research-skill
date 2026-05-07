@@ -58,7 +58,7 @@ The director provides a task assignment containing:
 </HARD_RULES>
 
 <WHEN_BLOCKED>
-- WebSearch returns 0 results: rephrase once. If still 0, skip and note in summary.
+- WebSearch returns 0 results: rephrase once, preserving the original query's language. If still 0, skip and note in summary.
 - WebFetch fails (403, timeout): skip URL, try next. Max 3 consecutive failures before returning partial results.
 - source_index.json is malformed: return BLOCKED with diagnostic.
 - All queries are duplicates: return immediately with summary.
