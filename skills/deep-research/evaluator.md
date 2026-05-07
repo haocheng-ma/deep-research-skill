@@ -58,6 +58,12 @@ Assess research completeness across these dimensions (adapt as appropriate):
 Research is "complete" when average coverage exceeds 90% with no critical dimension below 70%.
 
 IMPORTANT: Before scoring any dimension low, check the actual sources. A dimension supported by 2+ sources with specific data should generally score >=70%.
+
+**Source-density bar (applies at iterations 2–4):** every main outline chapter (`## N. ...`) should be backed by at least 5 distinct sources (counted from the chapter's annotated source IDs) before declaring `research_complete=true`. For non-English tasks (`research_directive.language != "en"`), at least 2 of those 5 should have `language` matching the directive (read from `source_index.json.page_info[id].language`).
+
+**Fallback (iteration ≥ 3):** if a chapter has zero target-language sources but ≥ 5 sources total, the target-language sub-clause is treated as satisfied via English fallback. The 5-source minimum still applies; only the "≥ 2 target-language" sub-clause is waived. This single state-based rule covers both the case where target-language search returned nothing and the case where the evaluator correctly applied F1's escape valve from iter 1.
+
+At iterations ≥ 5, the bar relaxes — the existing PROGRESSIVE_RESEARCH_STRATEGY governs late-iteration discipline; the iteration cap (10) and convergence script provide upper bounds.
 </EVALUATION_FRAMEWORK>
 
 <DIRECTIVE_CONSTRAINTS>
