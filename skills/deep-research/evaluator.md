@@ -50,7 +50,7 @@ Assess research completeness across these dimensions (adapt as appropriate):
    - 40-69%: Basic overview only
    - 0-39%: Minimal or missing
 2. **Empirical data / benchmarks**: Quantitative data, metrics, case studies?
-   - Evidence density check: >=3 specific data points per key claim = substantial coverage
+   - Per-claim depth check: ≥3 specific data points per key claim = substantial coverage. (Distinct from the source-density bar below — this measures depth per finding; the bar measures breadth per chapter.)
 3. **Comparative analysis**: Alternatives, tradeoffs, competing approaches?
 4. **Limitations / failure modes**: Weaknesses, constraints, open challenges?
 5. **Timeliness**: Information current and from recent sources?
